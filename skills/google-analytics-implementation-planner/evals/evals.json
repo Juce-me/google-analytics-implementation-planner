@@ -50,6 +50,17 @@
         "evals/fixtures/react-native-app/src/screens/Subscribe.tsx",
         "evals/fixtures/react-native-app/src/analytics/firebase.ts"
       ]
+    },
+    {
+      "id": 6,
+      "name": "gtm-web-simple-contract",
+      "prompt": "We have a React marketing + signup site with an existing GTM web container owned by Marketing because they manage ad pixels. Product wants GA4 page views, signup/login/form events, and Stripe subscription purchases. We want engineering to add events without asking Marketing to configure GTM every time. Plan the GA4 implementation.",
+      "expected_output": "The plan should explicitly answer whether GTM web will be used (yes), why, and who owns container changes. It should define a dataLayer.push({...}) contract, not dataLayer('event': ...), with exactly two normal GTM Custom Event triggers/tags: ga4_page_view -> one GA4 page_view tag that reuses GTM built-ins/GA4 predefined page fields before adding app-owned page params, and ga4_user_event -> one generic GA4 Event tag whose event name comes from a data layer variable such as ga4_event_name and whose params come from approved data layer variables not already covered by GA4/GTM. It should state that new normal events update code, taxonomy, tests, and possibly mapped variables, but do not create per-event GTM triggers/tags or custom properties duplicating page URL/path/referrer, device, geo, campaign, traffic-source, or click built-ins. Ecommerce should be configured separately with a dedicated ecommerce trigger/tag and GA4 ecommerce fields including items[], transaction_id, currency, and value. It should guard against duplicate page_view sends from automatic/enhanced measurement and avoid Universal Analytics category/action/label fields.",
+      "files": [
+        "evals/fixtures/gtm-web-site/README.md",
+        "evals/fixtures/gtm-web-site/src/App.tsx",
+        "evals/fixtures/gtm-web-site/src/checkout.ts"
+      ]
     }
   ]
 }

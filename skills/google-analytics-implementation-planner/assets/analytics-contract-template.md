@@ -25,6 +25,9 @@ Every user-visible feature PR must answer:
 
 - What decision will this feature's analytics support?
 - Which event name, event group, and typed params are added or changed?
+- Which GA4/GTM built-in, predefined dimension/metric, recommended
+  parameter, or existing dataLayer field was reused before adding a new
+  property?
 - If a custom definition is added, which GA4 predefined dimension/metric
   or recommended parameter was checked first?
 - Which test asserts the event and required params?
@@ -35,6 +38,17 @@ Every user-visible feature PR must answer:
 If no analytics event is needed, add an allowlist row with the reason.
 Never add bulk custom definitions or boolean presence dimensions such as
 `*_exists` / `has_*`.
+
+## GTM web contract
+
+If the active architecture uses GTM web, normal analytics events must use
+the existing `ga4_page_view` and `ga4_user_event` Custom Event
+triggers/tags. A normal feature PR may add or change app-owned dataLayer
+params, taxonomy rows, and tests, but must not create a new GTM
+trigger/tag per event or duplicate GTM/GA4 built-ins for page, device,
+geo, campaign, traffic-source, or click fields. Ecommerce uses the
+separate ecommerce trigger/tag and GA4 ecommerce fields (`currency`,
+`value`, `transaction_id`, `items[]`).
 
 ## Event taxonomy
 

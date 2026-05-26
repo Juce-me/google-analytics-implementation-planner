@@ -98,10 +98,10 @@ data must drive. Examples:
 - "which locales to keep translating"
 - "did the redesign change engagement"
 
-Capture: audience (minors? EEA/UK/Switzerland? B2B?), the GA4 property
-type (web stream, app stream, both), existing infrastructure (GTM
-container? gtag.js? Firebase SDK? server-side GTM? BigQuery export?), and
-any hard architectural constraints (server-side-only? no client JS?
+Capture: audience (minors? EEA/UK/Switzerland? B2B?), GA4 property type
+(web stream, app stream, both), whether GTM web will be used (why,
+owner, container), other infrastructure (gtag.js, Firebase SDK, sGTM,
+BigQuery), and hard constraints (server-side-only? no client JS?
 privacy-by-default?).
 
 ### 1.2. Required source-inspection checklist
@@ -138,7 +138,7 @@ docs and cite sources for every claim about:
 
 - ingestion endpoint and URL path
 - client payload shape vs Measurement Protocol payload shape
-- GTM web and sGTM behavior, clients, tags, and transformations
+- GTM web/sGTM behavior, clients, tags, transformations, dataLayer contract
 - recommended, automatically collected, and reserved event names
 - identity, session, `client_id`, `user_id`, and consent rules
 - event/parameter limits, custom definitions, metrics, and retention
@@ -160,10 +160,11 @@ Define a normalized internal event shape:
 Then define how the GA4 `event_name` is derived — prefer GA4's
 recommended-event names where they exist (`sign_up`, `login`, `search`,
 `select_content`, `share`, `view_item`, `purchase`, `refund`, etc.) so
-GA4's built-in reports populate. Use GA4 event parameters for additional
-context. Do **not** model Universal Analytics fields (`event_category`,
+GA4's built-in reports populate. Before adding a parameter, dataLayer variable,
+or custom definition, reuse GA4/GTM built-ins: automatic events, recommended params, predefined dimensions/metrics, and GTM Built-In Variables.
+Do **not** model Universal Analytics fields (`event_category`,
 `event_action`, `event_label`) in GA4 plans, templates, wrappers, or
-future-feature rules. Instead, define low-cardinality, group-specific
+future-feature rules. Add only low-cardinality, group-specific
 parameters such as `feature_area`, `signup_method`, `funnel_step`,
 `content_type`, `error_class`, or `search_location`, then register only
 the ones needed for reports as custom dimensions/metrics. `event_group`
@@ -196,6 +197,8 @@ The common patterns and when each is right:
   Gives app automatic collection, app-instance identity, screen reporting,
   and SDK consent controls. Measurement Protocol should augment this path,
   not replace it.
+- **GTM web container** — use only when needed. Normal web analytics uses
+  `references/gtm-and-tagging.md`'s two-trigger/two-tag contract; ecommerce stays separate.
 - **Measurement Protocol augmentation** — sends server/offline events
   into an existing web/app stream, can recover critical events ad
   blockers drop, and can enrich with server-only truth. It requires the
@@ -212,6 +215,9 @@ for named server/offline events. Distinguish
 custom sGTM clients. Name the exact endpoint/path and payload shape:
 
 - `gtag('event', name, params)` for browser sends
+- `dataLayer.push({ event: 'ga4_page_view', ... })` and
+  `dataLayer.push({ event: 'ga4_user_event', ga4_event_name, ... })`
+  for normal GTM web sends
 - Firebase Analytics SDK `logEvent` / `setUserID` / `setConsent` for
   iOS/Android app sends
 - `https://www.google-analytics.com/mp/collect?...` with JSON payload for
@@ -309,6 +315,8 @@ correction in a revision header. Cover:
   URL, language, latency, error class, request id.)
 - **(d) Codebase fit** — do the `file:line` anchors actually exist? Do
   proposed patterns match existing project conventions, deps, lint rules?
+  If GTM web is used, confirm no normal event requires a new GTM tag or
+  trigger beyond the approved page-view and user-event pair.
 
 Fix every finding before finalizing. Note the corrections in a revision
 header.

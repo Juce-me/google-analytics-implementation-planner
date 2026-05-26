@@ -33,10 +33,11 @@ Admin (gear icon, bottom left) → Property column.
    don't have ecommerce.)
 2. **Data Streams → Web**:
    - Stream name, URL, stream id.
-   - Enhanced Measurement → toggle: keep ON for `page_view`,
-     `scroll`, `outbound click`, `site search`, `video engagement`,
-     `file download`. **Turn OFF anything you'll re-emit manually**
-     (avoid double counts).
+   - Enhanced Measurement → toggle: keep ON for `scroll`, `outbound
+     click`, `site search`, `video engagement`, `file download`.
+     Keep automatic `page_view` only when the plan does not manually emit
+     `page_view` via GTM/gtag/app routing. **Turn OFF anything you'll
+     re-emit manually** (avoid double counts).
    - Configure tag settings → Domains → list of cross-domain
      destinations.
    - Configure tag settings → Internal traffic → add IP rules for the
@@ -184,17 +185,45 @@ For app streams, use Firebase SDK controls rather than the web snippet:
 GTM admin → Workspace.
 
 1. Create new container per environment. Never share across envs.
-2. Tags → New → Google tag for base configuration; GA4 Event tag for
-   events.
-3. Triggers → All Pages for the Google tag, specific event
-   triggers for Event tags.
-4. Google tags have built-in consent checks. Add required consent only
+2. Confirm the approved dataLayer contract uses `dataLayer.push({...})`,
+   not `dataLayer(...)`, and that GTM web is intentionally selected.
+3. Tags → New → Google tag for base configuration.
+4. Create exactly two normal analytics triggers/tags:
+
+   | Trigger | Tag | Event name | Data layer variables to map |
+   | --- | --- | --- | --- |
+   | Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; only app-owned page params if needed |
+   | Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific params not covered by GA4/GTM |
+
+   Adding a new normal event updates the app taxonomy/tests and the
+   `ga4_user_event` payload only; it does not create another GTM trigger
+   or tag.
+   If this tag sends `page_view`, disable duplicate automatic page-view
+   sends from the Google tag / Enhanced Measurement source of truth,
+   especially for SPA route changes.
+5. If ecommerce is active, configure it separately:
+
+   | Trigger | Tag | Event name | Required variables |
+   | --- | --- | --- | --- |
+   | Custom Event `ga4_ecommerce` | GA4 Event `GA4 - Ecommerce` | `{{DLV - ga4_ecommerce_event_name}}` | `currency`, `value`, `transaction_id` where applicable, `items[]` with `item_id` or `item_name` |
+
+   Map GA4 ecommerce fields from the data layer and validate `purchase`,
+   `refund`, and cart events against the ecommerce section of the plan.
+6. Google tags have built-in consent checks. Add required consent only
    when deliberately implementing basic-mode blocking; otherwise you
    suppress advanced-mode cookieless pings/modeling.
-5. Variables → enable built-ins (Page Path, Click ID, Click URL).
-6. Preview before publishing. Publish only after Tag Assistant green
+7. Variables → enable built-ins first (Page URL, Page Path, Referrer,
+   Click ID, Click URL, click classes/text, scroll/form/error variables
+   as needed). Create Data Layer Variables only for app-owned params that
+   GA4/GTM does not already provide, such as `logical_page`,
+   `feature_area`, `ga4_event_name`, and event-specific business fields.
+   Do not create variables for page, device, geo, campaign, traffic, or
+   click fields that built-ins already cover.
+8. Preview before publishing. Confirm normal page/user events fire only
+   the two normal triggers/tags; ecommerce fires only its dedicated path.
+   Publish only after Tag Assistant green
    for every test path.
-7. Lock prod container — only the analytics lead has publish rights.
+9. Lock prod container — only the analytics lead has publish rights.
 
 ## 7. (If using sGTM) server-side container
 
