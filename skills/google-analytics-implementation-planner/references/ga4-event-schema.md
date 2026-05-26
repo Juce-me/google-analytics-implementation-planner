@@ -9,6 +9,36 @@ sources before locking a plan:
 Numbers below were current at last check; treat them as a starting point,
 not as gospel.
 
+## Canonical internal envelope
+
+Define this before vendor mapping:
+
+```ts
+{
+  trigger: "userevent";
+  event_type: "pageview" | "event";
+  event_name?: string;      // required for event_type = "event"; already GA4 name
+  feature_name?: string;
+  screen_name?: string;
+  ids: Record<string, string | null>;
+  consent: Record<string, "granted" | "denied">;
+  userParams: {
+    page_name?: string;
+    page_location?: string; // full sanitized URL when not using GTM built-ins
+    page_title?: string;
+    screen_name?: string;
+  };
+  eventParams: Record<string, string | number | boolean | null>;
+  server_timestamp: number;
+}
+```
+
+For GTM web, also include top-level `event: "userevent"` because GTM
+Custom Event triggers fire on the `event` key. Vendor sends (`gtag`,
+Firebase SDK, Measurement Protocol, sGTM) use their native payload shapes
+after mapping and must not leak internal-only fields unless deliberately
+registered as GA4 params.
+
 ## Categories of event names
 
 GA4 distinguishes three name buckets. Treat them as load-bearing — the
@@ -127,8 +157,15 @@ register it as a custom dimension.
 
 ## Validation checklist for the plan reviewer
 
-- [ ] Every emitted payload uses the canonical envelope:
-      `trigger: "userevent"` and `event_type: "pageview" | "event"`.
+- [ ] Internal contract and GTM dataLayer payloads use the canonical
+      envelope: `trigger: "userevent"` and
+      `event_type: "pageview" | "event"`. GTM dataLayer pushes also
+      include top-level `event: "userevent"` because GTM fires on
+      `event`.
+- [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK,
+      Measurement Protocol, or sGTM) and do not leak internal-only
+      fields such as `trigger` or `event_type` unless the plan explicitly
+      maps them as reportable params.
 - [ ] `event_name` is the final GA4 event name; there is no
       internal-to-GA4 event rewrite table.
 - [ ] No payload uses `event_group` or `ga4_event_name`.

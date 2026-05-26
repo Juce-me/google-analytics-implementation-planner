@@ -66,14 +66,15 @@ consider `https://region1.google-analytics.com/mp/collect?...`.>
 
 ### GTM web dataLayer contract (if selected)
 
-Normal web analytics uses one Custom Event trigger: `userevent`. Use
-`event_type` to route page/screen views vs user events; do not create a
-new GTM trigger per event.
+Normal web analytics uses one dataLayer event name, `userevent`, with two
+filtered reusable GTM trigger/tag paths. GTM fires on the top-level
+`event` key; keep `trigger` as canonical audit metadata. Do not create a
+new GTM trigger or tag per product event.
 
-| Trigger event | event_type | GA4 event name | Data layer variables |
+| dataLayer event | Filter | GA4 event name | Data layer variables |
 | --- | --- | --- | --- |
-| `userevent` | `pageview` | `page_view` | GTM built-ins first; `userParams.*` only for app-owned page/screen context not covered by built-ins |
-| `userevent` | `event` | `{{DLV - event_name}}` | `eventParams.*` plus `userParams.*` where not covered by GA4/GTM |
+| `userevent` | `event_type = pageview` | `page_view` | GTM built-ins first; map `userParams.page_name` only if a logical page name is needed |
+| `userevent` | `event_type = event` | `{{DLV - event_name}}` | Explicitly mapped `eventParams.<key>` plus approved context fields |
 
 Normal event example:
 
@@ -86,9 +87,7 @@ window.dataLayer.push({
   feature_name: 'auth',
   screen_name: 'signup',
   userParams: {
-    page_name: 'signup',
-    page_location: '/signup',
-    page_title: 'Sign up'
+    page_name: 'signup'
   },
   eventParams: {
     method: 'password'
@@ -97,14 +96,18 @@ window.dataLayer.push({
 ```
 
 New normal events update code, tests, and §5 only; they do not create new
-GTM triggers or per-event tags. Ecommerce, if active, uses a separate
-`ga4_ecommerce` trigger/tag with GA4 ecommerce fields and `items[]`. If
-the page-view tag emits `page_view`, disable duplicate automatic/enhanced
-page-view sends.
+GTM triggers or per-event tags. Ecommerce, if active, uses approved GA4
+ecommerce dataLayer events such as `purchase` with
+`trigger: 'ga4_ecommerce'` and an `ecommerce` object containing
+`items[]`. If the page-view tag emits `page_view`, disable duplicate
+automatic/enhanced page-view sends and set `send_page_view = false`.
 
 Do not invent dataLayer or GA4 params for page URL/path/referrer, device,
 geo, campaign, traffic source, or click fields when GTM Built-In
 Variables or GA4 predefined dimensions/metrics already support them.
+For GTM, derive `page_location` and `page_title` from built-ins by
+default; map `userParams.page_location` only when it is a full canonical
+sanitized URL that the built-in cannot provide.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
@@ -144,8 +147,8 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
   },
   userParams: {
     page_name?:     string,
-    page_location?: string,    // sanitized URL/path; no raw query string
-    page_title?:    string,
+    page_location?: string,    // full sanitized URL when not using GTM built-ins
+    page_title?:    string,    // app-owned title only when built-in is insufficient
     screen_name?:   string,
   },
   eventParams:      Record<string, string | number | boolean | null>,
@@ -195,9 +198,9 @@ The contract. Every row must trace to a decision in §1.
 
 | Trigger | Event type | Event name | Feature/screen | userParams | eventParams | File/line anchor | Server/browser side | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`, `page_location`, `page_title` | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
-| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`, `page_location`, `page_title` | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
-| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`, `page_location`, `page_title` | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
+| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
+| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
+| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
 | ... | | | | | | | | |
 
 Every parameter listed here must be passed; nothing else is. The
@@ -328,13 +331,16 @@ One commit per step. The implementer follows this list top to bottom.
       calls; advanced mode sends only approved cookieless pings.
 - [ ] Minor / age-unclassified test: zero analytics sends.
 - [ ] Exact event assertions for each critical event.
-- [ ] Every event assertion checks `trigger: "userevent"` and
-      `event_type: "pageview" | "event"`.
+- [ ] Internal contract and GTM dataLayer assertions check
+      `event: "userevent"` where GTM is used, plus
+      `trigger: "userevent"` and `event_type: "pageview" | "event"`.
 - [ ] `event_name` is the GA4 event name with no rewrite table.
 - [ ] No `event_group` or `ga4_event_name` field appears in captured
       payloads.
 - [ ] Page/screen context is under `userParams` with GA4/GTM-compatible
       keys.
+- [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK, MP,
+      or sGTM) and do not leak internal-only fields.
 - [ ] Exactly-one-event test for each funnel step (no double-fire).
 - [ ] Network-failure test: queue overflows, UX unaffected, drop
       counter increments.

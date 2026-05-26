@@ -71,7 +71,7 @@ that should have been event params.
 | Item-scoped custom dimensions | 10 | 25 |
 | Event-scoped custom metrics | 50 | 125 |
 | Audiences | 100 | 400 |
-| Conversions (key events) | 30 | 50 |
+| Key events | 30 | 50 |
 
 Custom definitions can be archived to free quota for new definitions,
 but archiving breaks dependent audiences, explorations, reports, and ads
@@ -188,11 +188,11 @@ For metrics, specify the unit so the GA4 UI labels reports correctly:
   — leave them as plain event parameters. You can still see them in
   DebugView and pull them via BigQuery export.
 
-## Conversions (now "key events")
+## Key events
 
-GA4 renamed "conversions" to "key events" in 2024. The mechanism is
-unchanged: mark up to 30 events as key events (Standard), and they
-populate Conversion-style reports + can drive audiences.
+Mark up to 30 events as key events (Standard). Analytics key events are
+not the same thing as Google Ads conversions; only use conversion
+language when the plan explicitly covers Ads bidding or Ads reporting.
 
 Pick deliberately. A key event should be the moment that satisfies a
 goal stated in step 1.1 of the plan (a decision the data drives), not

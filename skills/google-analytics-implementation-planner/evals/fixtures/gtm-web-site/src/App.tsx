@@ -22,9 +22,7 @@ export function App() {
       feature_name: "marketing",
       screen_name: logicalPage,
       userParams: {
-        page_name: logicalPage,
-        page_location: `/${logicalPage}`,
-        page_title: logicalPage
+        page_name: logicalPage
       }
     });
   }
@@ -38,9 +36,7 @@ export function App() {
       feature_name: "auth",
       screen_name: "signup",
       userParams: {
-        page_name: "signup",
-        page_location: "/signup",
-        page_title: "Sign up"
+        page_name: "signup"
       },
       eventParams: { method }
     });
@@ -55,9 +51,7 @@ export function App() {
       feature_name: "auth",
       screen_name: "login",
       userParams: {
-        page_name: "login",
-        page_location: "/login",
-        page_title: "Log in"
+        page_name: "login"
       },
       eventParams: { method }
     });
@@ -72,9 +66,7 @@ export function App() {
       feature_name: "lead",
       screen_name: "pricing",
       userParams: {
-        page_name: "pricing",
-        page_location: "/pricing",
-        page_title: "Pricing"
+        page_name: "pricing"
       },
       eventParams: { lead_source: "pricing" }
     });

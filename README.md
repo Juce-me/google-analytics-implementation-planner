@@ -1,8 +1,9 @@
 # google-analytics-implementation-planner
 
 A portable agent **skill** that produces a privacy-first, codebase-anchored
-Google Analytics 4 (GA4) instrumentation plan — and a separate setup
-runbook — for any web, mobile app, server-side, or hybrid application.
+Google Analytics 4 (GA4) instrumentation plan, separate setup runbook,
+durable analytics contract, and future-feature analytics rule for any
+web, mobile app, server-side, or hybrid application.
 
 Built to work across coding agents that read the [AGENTS.md](https://agents.md)
 standard (Claude Code, Codex, Cursor, Windsurf, Copilot, Aider, Devin,
@@ -23,12 +24,12 @@ track", "set up Google Analytics"), the skill produces:
 2. **A setup runbook** — the **how**. GA4 admin click-paths, GTM
    container configuration (if applicable), the Measurement Protocol
    payload contract (if server-side), Consent Mode v2 defaults
-   snippet, DebugView validation, BigQuery export setup, rollback.
+   snippet, DebugView validation, conditional BigQuery export setup,
+   rollback.
 
-The two artifacts are kept separate by design — they drift if merged.
-The skill also tells the target repo to maintain a durable
-`docs/README_ANALYTICS.md` contract and an `AGENTS.md` analytics-impact
-rule for future features.
+The plan and runbook are kept separate by design — they drift if merged.
+The durable `docs/README_ANALYTICS.md` contract and `AGENTS.md`
+analytics-impact rule keep future features aligned after launch.
 
 ## What this skill is NOT
 
@@ -177,9 +178,10 @@ This repo is itself a skill-development environment. The
 4. Repeat until the with-skill outputs are reliably better than the
    baseline.
 
-The starter `evals.json` contains four realistic prompts (greenfield
-SaaS, child-audience escalation case, ecommerce migration to server-side,
-and broad-vendor scope guarding) — extend it as the skill matures.
+The starter `evals.json` contains six realistic prompts: greenfield SaaS,
+child-audience escalation, ecommerce migration to server-side,
+broad-vendor scope guarding, React Native/Firebase app streams, and a
+GTM web contract case. Extend it as the skill matures.
 
 ## Contributing
 

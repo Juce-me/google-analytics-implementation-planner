@@ -31,8 +31,7 @@ Author: <your-handle>
 Admin (gear icon, bottom left) → Property column.
 
 1. **Property → Property Details:** name, timezone, currency. (Currency
-   here defines the report-level conversion target — set even if you
-   don't have ecommerce.)
+   here defines report currency — set even if you don't have ecommerce.)
 2. **Data Streams → Web**:
    - Stream name, URL, stream id.
    - Enhanced Measurement → toggle: keep ON for `scroll`, `outbound
@@ -190,25 +189,36 @@ GTM admin → Workspace.
 2. Confirm the approved dataLayer contract uses `dataLayer.push({...})`,
    not `dataLayer(...)`, and that GTM web is intentionally selected.
 3. Tags → New → Google tag for base configuration.
-4. Create one normal analytics Custom Event trigger and reusable GA4
-   Event tag(s):
+4. Create two filtered normal analytics Custom Event triggers and two
+   reusable GA4 Event tags. Both triggers match dataLayer event name
+   `userevent`; the filter chooses the pageview or user-event path.
 
    | Trigger | Condition | Tag | Event name | Data layer variables to map |
    | --- | --- | --- | --- | --- |
-   | Custom Event `userevent` | `event_type` equals `pageview` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; `userParams.*` only for app-owned page/screen context not covered by built-ins |
-   | Custom Event `userevent` | `event_type` equals `event` | GA4 Event `GA4 - User Event` | `{{DLV - event_name}}` | `eventParams.*` plus `userParams.*` where not covered by GA4/GTM |
+   | Custom Event `userevent` | `event_type` equals `pageview` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; `userParams.page_name` only if a logical page name is needed |
+   | Custom Event `userevent` | `event_type` equals `event` | GA4 Event `GA4 - User Event` | `{{DLV - event_name}}` | Explicit DLV mappings from the table below |
 
    Adding a new normal event updates the app taxonomy/tests and the
    `userevent` payload only; it does not create another GTM trigger or
    per-event tag.
-   If this tag sends `page_view`, disable duplicate automatic page-view
-   sends from the Google tag / Enhanced Measurement source of truth,
-   especially for SPA route changes.
+   When manual `userevent` pageviews are selected, set the Google tag
+   configuration parameter `send_page_view` to `false` everywhere the
+   base tag loads, and disable duplicate Enhanced Measurement or
+   history-change pageviews for SPA route changes that the app emits.
 5. If ecommerce is active, configure it separately:
 
-   | Trigger | Tag | Event name | Required variables |
+   ```js
+   window.dataLayer.push({ ecommerce: null });
+   window.dataLayer.push({
+     event: 'purchase',
+     trigger: 'ga4_ecommerce',
+     ecommerce: { transaction_id, currency, value, items }
+   });
+   ```
+
+   | Trigger | Tag | Event name | Ecommerce data source |
    | --- | --- | --- | --- |
-   | Custom Event `ga4_ecommerce` | GA4 Event `GA4 - Ecommerce` | `{{DLV - event_name}}` | `currency`, `value`, `transaction_id` where applicable, `items[]` with `item_id` or `item_name` |
+   | Custom Event matching approved ecommerce names (`purchase`, `refund`, etc.) | GA4 Event `GA4 - Ecommerce` | `{{Event}}` | Data Layer `ecommerce` object |
 
    Map GA4 ecommerce fields from the data layer and validate `purchase`,
    `refund`, and cart events against the ecommerce section of the plan.
@@ -218,15 +228,26 @@ GTM admin → Workspace.
 7. Variables → enable built-ins first (Page URL, Page Path, Referrer,
    Click ID, Click URL, click classes/text, scroll/form/error variables
    as needed). Create Data Layer Variables only for app-owned params that
-   GA4/GTM does not already provide, such as `event_type`, `event_name`,
-   `feature_name`, `screen_name`, `userParams.page_name`,
-   `userParams.page_title`, `userParams.page_location`, and
-   `eventParams.<business_field>`. Do not create variables for page,
-   device, geo, campaign, traffic, or click fields that built-ins already
-   cover.
+   GA4/GTM does not already provide. There is no wildcard mapping:
+   create one Data Layer Variable per nested field and one GA4 parameter
+   row per parameter.
+
+   | GTM variable | Data Layer Variable Name | Version | GA4 parameter | Tag(s) |
+   | --- | --- | --- | --- | --- |
+   | `DLV - event_type` | `event_type` | 2 | filter only | triggers |
+   | `DLV - event_name` | `event_name` | 2 | event name source | `GA4 - User Event` |
+   | `DLV - feature_name` | `feature_name` | 2 | `feature_name` | `GA4 - User Event` when registered |
+   | `DLV - screen_name` | `screen_name` | 2 | `screen_name` | page/user tags when needed |
+   | `DLV - userParams.page_name` | `userParams.page_name` | 2 | `page_name` | page/user tags when registered |
+   | `DLV - eventParams.<param>` | `eventParams.<param>` | 2 | `<param>` | tags listed in the event catalog |
+
+   Do not create variables for page URL/path/title/referrer, device, geo,
+   campaign, traffic, or click fields that built-ins already cover. If a
+   non-GTM sender uses `userParams.page_location`, it must be a full
+   canonical sanitized URL, not a relative path.
 8. Preview before publishing. Confirm normal page/user events fire only
-   the approved `userevent` trigger/tag path; ecommerce fires only its
-   dedicated path.
+   the approved `userevent` trigger/tag paths; ecommerce fires only its
+   dedicated ecommerce path and uses the `ecommerce` object.
    Publish only after Tag Assistant green
    for every test path.
 9. Lock prod container — only the analytics lead has publish rights.
