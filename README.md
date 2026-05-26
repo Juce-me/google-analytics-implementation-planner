@@ -46,7 +46,7 @@ rule for future features.
 ## Repo layout
 
 ```
-mega-analytics-skill/
+google-analytics-skill/
 ├── AGENTS.md                  # Agent operating instructions (root)
 ├── CLAUDE.md → AGENTS.md
 ├── GEMINI.md → AGENTS.md
@@ -101,7 +101,7 @@ For a personal Codex install from this checkout:
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s /Users/juce/Documents/devs/mega-analytics-skill/skills/google-analytics-implementation-planner \
+ln -s /Users/juce/Documents/devs/google-analytics-skill/skills/google-analytics-implementation-planner \
   ~/.codex/skills/google-analytics-implementation-planner
 ```
 
@@ -115,7 +115,7 @@ For a personal Claude Code install:
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s /Users/juce/Documents/devs/mega-analytics-skill/skills/google-analytics-implementation-planner \
+ln -s /Users/juce/Documents/devs/google-analytics-skill/skills/google-analytics-implementation-planner \
   ~/.claude/skills/google-analytics-implementation-planner
 ```
 
@@ -123,7 +123,7 @@ For a project-local Claude Code install:
 
 ```bash
 mkdir -p .claude/skills
-ln -s /Users/juce/Documents/devs/mega-analytics-skill/skills/google-analytics-implementation-planner \
+ln -s /Users/juce/Documents/devs/google-analytics-skill/skills/google-analytics-implementation-planner \
   .claude/skills/google-analytics-implementation-planner
 ```
 

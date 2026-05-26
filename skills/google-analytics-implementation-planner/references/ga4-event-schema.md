@@ -1,11 +1,13 @@
 # GA4 event schema — names, parameters, limits
 
-Always verify the current numbers against
-<https://support.google.com/analytics/answer/9267744> (event/parameter
-limits) and <https://developers.google.com/analytics/devguides/collection/ga4/reference/events>
-(reserved + recommended events) before locking a plan. Numbers below
-were current at the time this reference was written; treat them as a
-starting point, not as gospel.
+Always verify the current numbers against these sources before locking a
+plan:
+- CONFIRMED: <https://support.google.com/analytics/answer/9267744>
+  (event/parameter limits)
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/ga4/reference/events>
+  (reserved + recommended events)
+Numbers below were current at the time this reference was written; treat
+them as a starting point, not as gospel.
 
 ## Categories of event names
 
@@ -53,7 +55,9 @@ reports. Pick from this list before inventing.
 
 Required parameters per recommended event are documented at the link
 above and must be passed exactly — `purchase` without `transaction_id`,
-`currency`, and `value` will not appear in Monetization reports.
+`items[]`, and the value/currency pair needed for revenue reporting will
+not appear correctly in Monetization reports. Each ecommerce item needs
+one of `item_id` or `item_name`.
 
 ### Custom events
 
@@ -67,10 +71,11 @@ those namespaces are reserved.
 | --- | --- |
 | Event name length | 40 chars |
 | Parameter name length | 40 chars |
-| Parameter value length | 100 chars (500 for `page_location` and a few others) |
-| Item-scoped parameter value length | 500 chars |
+| Parameter value length | 100 chars (Standard); 500 chars (360) |
+| Page parameter value length | `page_location` 1,000 chars; `page_referrer` 420; `page_title` 300 |
 | Parameters per event | 25 (excluding automatically logged ones) |
 | Items per event (ecommerce) | 200 |
+| Custom item-scoped parameters per ecommerce event | 27 |
 | Custom dimensions per property | 50 event-scoped + 25 user-scoped (Standard); higher on 360 |
 | Custom metrics per property | 50 event-scoped (Standard) |
 | Distinct cardinality per dimension per day | ~500 high-card values before "(other)" bucketing |
@@ -85,6 +90,10 @@ register it as a custom dimension.
 
 - Event names and parameter keys: `snake_case`, ASCII, no spaces.
 - Reserved prefixes (do NOT use): `ga_`, `google_`, `firebase_`, `_`.
+- Do not use Universal Analytics-style `event_category`,
+  `event_action`, or `event_label`. Use a meaningful `event_name` plus
+  specific GA4 event parameters, and register reportable parameters as
+  custom dimensions/metrics.
 - Reserved event names (do NOT re-emit): the automatic-collection list
   above, plus `ad_click`, `ad_query`, `ad_exposure`, `app_clear_data`,
   `app_install`, `app_remove`, `app_update`, `error`, `in_app_purchase`,
@@ -99,12 +108,17 @@ register it as a custom dimension.
 
 - [ ] Every event in the catalog uses a recommended name where one
       exists, or a custom name that doesn't collide with reserved.
-- [ ] Every `purchase` / `refund` carries `transaction_id`, `currency`
-      (ISO-4217), and `value` (Σ of items).
+- [ ] Every `purchase` carries `transaction_id`, `items[]`, `currency`
+      (ISO-4217), and `value` (Σ of items), and every item has
+      `item_id` or `item_name`.
 - [ ] No parameter key uses a reserved prefix.
-- [ ] No parameter value exceeds 100 chars (or 500 for the documented
-      exceptions).
+- [ ] No event uses `event_category`, `event_action`, or `event_label`.
+- [ ] No parameter value exceeds the documented Standard/360 and
+      page-parameter limits.
 - [ ] No event exceeds 25 user parameters.
+- [ ] No boolean `*_exists` / `has_*` parameter is used only to signal
+      whether another parameter is present.
 - [ ] No custom dimension is registered for a high-cardinality id.
+- [ ] No custom dimension duplicates a GA4 predefined dimension/metric.
 - [ ] Enhanced Measurement events are not re-fired manually.
 - [ ] Custom-dimension count stays under the property's cap (50 / 25).

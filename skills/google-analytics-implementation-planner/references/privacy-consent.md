@@ -1,11 +1,12 @@
 # Privacy, consent, and the legal floor
 
 Authoritative refs:
-- <https://developers.google.com/tag-platform/security/guides/consent>
+- CONFIRMED: <https://developers.google.com/tag-platform/security/concepts/consent-mode>
+- CONFIRMED: <https://developers.google.com/tag-platform/security/guides/consent>
   (Consent Mode v2)
-- <https://support.google.com/analytics/answer/9019185> (data-deletion
+- CONFIRMED: <https://support.google.com/analytics/answer/9019185> (data-deletion
   request)
-- <https://support.google.com/analytics/answer/12017362> (User-Deletion
+- CONFIRMED: <https://support.google.com/analytics/answer/12017362> (User-Deletion
   API)
 - EU GDPR Art. 5 (data minimization), Art. 25 (privacy by design), Art.
   17 (right to erasure).
@@ -48,8 +49,18 @@ escalate.
 | `ad_personalization` | Whether ads may be personalized (v2 new) |
 
 For server-side Measurement Protocol calls, mirror the same `consent`
-object in the payload. GA4 will model conversions for traffic with
-`denied` if the property is enrolled.
+decision in the payload where MP supports it. MP supports only
+`ad_user_data` and `ad_personalization`; `analytics_storage` and
+`ad_storage` are web tag Consent Mode signals, not MP payload fields.
+
+Pick and document one Consent Mode posture:
+
+- **Basic consent mode:** block Google tags until consent. If consent is
+  denied, no data is sent to Google. This matches the strict
+  "zero third-party analytics sends" posture below.
+- **Advanced consent mode:** Google tags load with denied defaults and
+  send cookieless measurements while denied. This can improve modeling,
+  but it is not "zero sends" and needs explicit legal/product approval.
 
 The default snippet (place inline in `<head>` BEFORE any tag loader):
 
@@ -155,8 +166,9 @@ place — partial values still leak format).
 
 ## URLs as parameters: extra care
 
-`page_location` is a recommended GA4 param and is allow-listed for 500
-chars, but URLs routinely carry tokens (reset links, magic-login links,
+`page_location` is a recommended GA4 param and has a larger documented
+limit than ordinary parameters, but URLs routinely carry tokens (reset
+links, magic-login links,
 shared invites). Before sending:
 
 1. Strip the query string entirely OR allowlist known-safe params
@@ -192,7 +204,7 @@ shared invites). Before sending:
 When a user deletes their account, you must remove their data from:
 
 1. **GA4** — User-Deletion API call with the hashed `user_id` + all
-   known `client_id` values you've stored.
+   known web `client_id` and app `app_instance_id` values you've stored.
 2. **BigQuery export** — DELETE on the linked dataset within 60 days.
 3. **Any sGTM logs** — purge per your log retention policy.
 4. **Any downstream warehouse / CDP** — propagate the deletion event.
@@ -220,8 +232,9 @@ anything.
 - [ ] Test that fires every event in the catalog with a fixture user
       and asserts the captured payload contains zero forbidden keys
       and zero values matching forbidden regexes.
-- [ ] Consent default test: with consent denied, asserting zero
-      outbound network calls to `*.google-analytics.com` or
-      `*.analytics.google.com`.
+- [ ] Consent default test: in basic consent mode with consent denied,
+      asserting zero outbound network calls to `*.google-analytics.com`
+      or `*.analytics.google.com`. In advanced consent mode, assert only
+      approved cookieless pings are sent.
 - [ ] Account-deletion smoke test: deletion triggers User-Deletion API
       call within the documented SLA.

@@ -1,9 +1,10 @@
 # GTM and tagging — when, which, why
 
 Authoritative docs:
-- <https://developers.google.com/tag-platform/tag-manager>
-- <https://developers.google.com/tag-platform/tag-manager/server-side>
-- <https://developers.google.com/tag-platform/gtagjs>
+- CONFIRMED: <https://developers.google.com/tag-platform/tag-manager>
+- CONFIRMED: <https://developers.google.com/tag-platform/tag-manager/server-side>
+- CONFIRMED: <https://developers.google.com/tag-platform/gtagjs>
+- CONFIRMED: <https://developers.google.com/tag-platform/security/concepts/consent-mode>
 
 ## Decision matrix
 
@@ -13,7 +14,7 @@ Authoritative docs:
 | Non-engineer can edit tags | no | yes | yes (with care) |
 | Ad-blocker resistant | no | no | yes |
 | Cost (Google Cloud / hosting) | $0 | $0 | $$ (Cloud Run / App Engine) |
-| Modeled conversions (Consent Mode v2) | yes | yes | yes |
+| Consent Mode support | yes | yes | yes |
 | Maintenance burden | low | medium | high |
 | Right for | simple sites, side projects, MVP | marketing-heavy site, multiple ad networks | enterprise, paid acquisition spend > GTM cost, strict privacy posture |
 
@@ -56,8 +57,8 @@ the deficit costs more than the sGTM infrastructure. Concretely:
 
 - Paid acquisition spend > $10k/month and reported ROAS is clearly low
   vs. backend truth.
-- Modeled conversions (the Consent Mode v2 fallback) aren't enough
-  because consent rate is low.
+- Advanced Consent Mode modeling is approved but still not enough
+  because observable paid-conversion gaps remain.
 - Strict privacy posture (medical, finance, EU regulated) where third-
   party beacons are a legal liability.
 
@@ -80,9 +81,8 @@ If the user is asking for "GTM" and the project is a side project / MVP
 
 ## Tag sequencing on the page
 
-Consent Mode v2 must load BEFORE any measurement tag, or GA4 logs the
-event under the default state (which is `denied` in EU) and you lose
-modeled conversions for it. Order:
+Consent Mode v2 defaults must load BEFORE any measurement tag, or GA4 can
+log early events under the wrong consent state. Order:
 
 1. Consent default snippet (synchronous, top of `<head>`).
 2. gtag.js / GTM container (async).
