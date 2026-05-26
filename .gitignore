@@ -1,0 +1,14 @@
+# Local per-user agent settings (allowlists, hooks). Never committed.
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# Editor/IDE
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Eval workspaces (skill-creator iteration artifacts)
+*-workspace/
