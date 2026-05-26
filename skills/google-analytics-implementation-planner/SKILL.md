@@ -3,11 +3,12 @@ name: google-analytics-implementation-planner
 description: >
   Use when the user wants to add, design, audit, review, or document
   production analytics for a real codebase and the implementation target is
-  Google Analytics 4, Google Tag Manager, server-side GTM, or Measurement
-  Protocol: "add analytics", "add GA4", "set up Google Analytics", "what
-  should we track", "traffic-source reporting", "feature usage
-  measurement", "funnel analysis", "adoption tracking", "telemetry", or
-  "product tracking". Also trigger for broader analytics asks mentioning
+  Google Analytics 4, Firebase Analytics SDK app streams, Google Tag
+  Manager, server-side GTM, or Measurement Protocol: "add analytics",
+  "add GA4", "set up Google Analytics", "what should we track",
+  "traffic-source reporting", "feature usage measurement", "funnel
+  analysis", "adoption tracking", "telemetry", or "product tracking".
+  Also trigger for broader analytics asks mentioning
   Segment, PostHog, Plausible, or similar tools so you can confirm vendor
   scope, but do not produce non-GA4 implementation plans from this skill.
   Produces a privacy-first, codebase-anchored GA4 instrumentation design
@@ -46,7 +47,8 @@ vendor-specific skill instead of stretching this one.
    `gtag.js` vs Measurement Protocol shape, currency/units rules,
    parameter limits (name/value length, params-per-event, custom-dimension
    caps), identity/session semantics, Consent Mode v2 requirements,
-   beacon/header constraints, region/data-residency reality, deletion APIs.
+   beacon/header constraints, region/data-residency reality, Admin API
+   user-deletion behavior.
    Mark each claim CONFIRMED / REFUTED / PARTIAL / NOT-FOUND with a source
    URL. Do not repeat a claim you couldn't verify. See
    [references/ga4-event-schema.md](references/ga4-event-schema.md) for
@@ -55,11 +57,14 @@ vendor-specific skill instead of stretching this one.
    every place an event fires, every route, every migration, every config
    touch. A plan that wasn't written with the source tree open is a guess.
 4. **Privacy is the floor, not a feature.** No raw email/name/IP/free-text/
-   tokens ever reach Google. Maintain an explicit forbidden-keys list
-   (exact names + suffix/prefix wildcards + value-shape regexes for emails,
-   URLs, tokens). Scrub at the source AND at the processing layer (defense
-   in depth). See [references/privacy-consent.md](references/privacy-consent.md)
-   for the GDPR/COPPA/Consent-Mode-v2 floor and the forbidden-keys starter.
+   tokens, or explicit IP/user-agent/referrer params reach Google. Browser
+   and app SDKs can still transmit passive headers and connection metadata;
+   document vendor behavior instead of overclaiming "nothing leaves." Maintain
+   an explicit forbidden-keys list (exact names + suffix/prefix wildcards +
+   value-shape regexes for emails, URLs, tokens). Scrub at the source AND at
+   the processing layer (defense in depth). See
+   [references/privacy-consent.md](references/privacy-consent.md) for the
+   GDPR/COPPA/Consent-Mode-v2 floor and the forbidden-keys starter.
 5. **Push back on disproportion.** If a GTM + server-side container + BigQuery
    export apparatus is heavier than the app or audience warrants, say so
    plainly and name the lighter alternative (gtag.js direct, or even
@@ -93,10 +98,11 @@ data must drive. Examples:
 - "which locales to keep translating"
 - "did the redesign change engagement"
 
-Capture: audience (minors? EU? B2B?), the GA4 property type (web stream,
-app stream, both), existing infrastructure (GTM container? gtag.js?
-server-side GTM? BigQuery export?), and any hard architectural constraints
-(server-side-only? no client JS? privacy-by-default?).
+Capture: audience (minors? EEA/UK/Switzerland? B2B?), the GA4 property
+type (web stream, app stream, both), existing infrastructure (GTM
+container? gtag.js? Firebase SDK? server-side GTM? BigQuery export?), and
+any hard architectural constraints (server-side-only? no client JS?
+privacy-by-default?).
 
 ### 1.2. Required source-inspection checklist
 
@@ -173,17 +179,23 @@ of an email is reversible with a user list, so treat as pseudonymous
 personal data. State exactly which events carry `user_id` and when it's
 cleared (logout, account deletion).
 
-Don't assume GA4 auto-attaches `ga_session_id` for server-side
-Measurement Protocol calls — it does not, you must mint and forward it.
-See [references/identity-sessions.md](references/identity-sessions.md).
+Don't assume Measurement Protocol can rely on `user_id` alone. Web MP
+needs `client_id`; app MP needs SDK-derived `app_instance_id`; session and
+engagement params are required for accurate Realtime, engagement, and
+session attribution. See
+[references/identity-sessions.md](references/identity-sessions.md).
 
 ### 1.6. Choose one architecture deliberately
 
-The three patterns and when each is right:
+The common patterns and when each is right:
 
 - **gtag.js client-side** — fastest to ship, full Consent Mode support out
   of the box, and the normal path for GA4 automatic collection. Loses
   data to ad blockers and to users who deny consent.
+- **Firebase Analytics SDK direct** — default for iOS/Android app streams.
+  Gives app automatic collection, app-instance identity, screen reporting,
+  and SDK consent controls. Measurement Protocol should augment this path,
+  not replace it.
 - **Measurement Protocol augmentation** — sends server/offline events
   into an existing web/app stream, can recover critical events ad
   blockers drop, and can enrich with server-only truth. It requires the
@@ -200,10 +212,19 @@ for named server/offline events. Distinguish
 custom sGTM clients. Name the exact endpoint/path and payload shape:
 
 - `gtag('event', name, params)` for browser sends
+- Firebase Analytics SDK `logEvent` / `setUserID` / `setConsent` for
+  iOS/Android app sends
 - `https://www.google-analytics.com/mp/collect?...` with JSON payload for
-  Measurement Protocol sends
+  Measurement Protocol sends, or
+  `https://region1.google-analytics.com/mp/collect?...` when EU regional
+  collection is required
 - first-party sGTM endpoint path plus the exact client/tag/template config
   when using server-side GTM
+
+For sGTM, distinguish routing Google tags through a first-party tagging
+server from sending MP-format backend events to an sGTM Measurement
+Protocol client. The latter is not the GA4 MP endpoint and has different
+debugging/validation behavior.
 
 State the trade-off out loud (cost, latency, privacy, modeled-conversion
 loss, ops toil). See [references/gtm-and-tagging.md](references/gtm-and-tagging.md)
@@ -216,28 +237,31 @@ silent for users and log failures without PII.
 
 ### 1.7. Privacy, consent & legal checklist
 
-Consent model + defaults (deny-by-default in the EU under Consent Mode v2),
-equal-prominence reject button, the exact gate logic. For minors: a hard
-**server-side** disable, not just a client toggle. Existing users without
-age/consent classification default to analytics-disabled / unclassified
-until they answer the gate. Default to **basic consent mode** for strict
-privacy: consent rejection produces no third-party analytics send. If the
-plan chooses advanced consent mode, state that denied users still send
-cookieless pings and require explicit legal/product approval.
+Consent model + defaults (deny-by-default in the EEA, UK, and Switzerland
+under Google's EU User Consent Policy), equal-prominence reject button, the
+exact gate logic. For minors: a hard **server-side** disable, not just a
+client toggle. Existing users without age/consent classification default to
+analytics-disabled / unclassified until they answer the gate. Default to
+**basic consent mode** for strict privacy: consent rejection produces no
+third-party analytics send. If the plan chooses advanced consent mode,
+state that denied users still send cookieless pings and require explicit
+legal/product approval. For apps, document Firebase SDK collection defaults,
+`setConsent`, and `setAnalyticsCollectionEnabled` behavior.
 
-No raw email, name, phone, free text, token, full URL query, raw user
-agent, or full IP leaves the app. Define forbidden keys, wildcard rules,
-and value-shape regexes. Scrub at the source and again in the processing
-layer.
+No raw email, name, phone, free text, token, full URL query, or explicit
+IP/user-agent/referrer params or payload fields leave the app. Define
+forbidden keys, wildcard rules, and value-shape regexes. Scrub at the
+source and again in the processing layer.
 
 For IP/geo, prefer local enrichment. If IP-like data must leave the app,
 truncate precisely in the plan (IPv4 `/24`, IPv6 `/48`, or stricter) and
 cite the vendor behavior.
 
 For richer data: DPIA, processor agreement, RoPA entry, privacy-policy
-update, data-subject erasure pipeline (User Deletion API + downstream
-stores like BigQuery export), data-residency reality (GA4 ingest region vs
-Google's global infra — don't overclaim "EU-only"). Full floor in
+update, data-subject erasure pipeline (Admin API
+`properties.submitUserDeletion` plus downstream stores like BigQuery
+export), regional-collection reality (regional collection is not an
+"EU-only" processing promise). Full floor in
 [references/privacy-consent.md](references/privacy-consent.md).
 
 ### 1.8. Reporting config — dimensions vs metrics
@@ -263,11 +287,12 @@ The current caps and decision rules live in
 
 If real ecommerce/payments may come later, reserve the GA4-standard schema
 (`purchase` / `refund`, ISO-4217 `currency`, idempotent `transaction_id`,
-`value` = Σ `items[].price * items[].quantity`) as a **documented-but-
-inactive** category — kept out of the live allowlist until it ships. Flag
-the reservation as deliberate future-proofing, docs-only. Cheap. Stops
-someone bolting `currency: "POINTS"` onto a non-revenue event later and
-polluting Monetization reports.
+`value` = Σ discounted `items[].price * items[].quantity` excluding tax
+and shipping) as a **documented-but-inactive** category — kept out of the
+live allowlist until it ships. Flag the reservation as deliberate
+future-proofing, docs-only. Cheap. Stops someone bolting `currency:
+"POINTS"` onto a non-revenue event later and polluting Monetization
+reports.
 
 ### 1.10. Multi-pass review before finalizing
 
@@ -341,7 +366,7 @@ checkbox the implementer ticks:
 
 Produce **two artifacts**, separately, in the project's existing docs tree
 (`docs/agents/features/PLANNED-ga4-instrumentation.md` plus a sibling
-`runbook` artifact, following `docs/agents.md` naming if that file
+`runbook` artifact, following `docs/AGENTS.md` naming if that file
 exists). Use the templates:
 
 - **Design plan** (the why): `assets/plan-template.md`
@@ -414,7 +439,9 @@ Stop and ask the user before producing a plan if any are true:
 - The repo shows no GA4 / GTM / `gtag` artifacts and the user hasn't said
   GA4 is the choice. Confirm vendor first; don't assume.
 - The user wants to track health data (HIPAA), education records (FERPA),
-  or financial transactions in regulated jurisdictions. Escalate.
+  or financial transactions in regulated jurisdictions. Escalate. Google
+  Analytics does not offer a HIPAA BAA; HIPAA-regulated entities must not
+  expose PHI to GA.
 - Existing analytics already ship and the user is asking for a migration,
   not a greenfield plan, and the migration goal/source of truth is unclear.
   If the user has named a specific gap (for example, Stripe purchases

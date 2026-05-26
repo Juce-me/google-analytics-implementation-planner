@@ -8,10 +8,11 @@ future feature work updates.
 
 - Analytics vendor: Google Analytics 4 / Google Tag Manager / Measurement
   Protocol.
-- Active architecture: <gtag.js direct | GTM web | Measurement Protocol |
-  sGTM | hybrid, with endpoint/path>.
+- Active architecture: <gtag.js direct | Firebase Analytics SDK direct |
+  GTM web | Measurement Protocol | sGTM | hybrid, with endpoint/path>.
 - Privacy floor: no raw email, name, phone, free text, token, full URL
-  query, raw user agent, or full IP leaves the app.
+  query, or explicit IP/user-agent/referrer params or payload fields leave
+  the app. Passive SDK/browser metadata is documented separately.
 - GA4 events use `event_name` plus specific event parameters. Do not use
   Universal Analytics-style `event_category`, `event_action`, or
   `event_label`.
@@ -75,6 +76,8 @@ State-changing routes without analytics must be documented here.
 - Minor or age-unclassified users send zero analytics events.
 - User identifiers are pseudonymous and hashed with a server-only pepper.
 - IP/geo behavior: <local enrichment | precise truncation rule | disabled>.
+- App consent behavior: <Firebase `setConsent` mapping and collection
+  enablement default, if app streams exist>.
 
 ## Drift checks
 
