@@ -36,6 +36,15 @@ If no analytics event is needed, add an allowlist row with the reason.
 Never add bulk custom definitions or boolean presence dimensions such as
 `*_exists` / `has_*`.
 
+## GTM web contract
+
+If the active architecture uses GTM web, normal analytics events must use
+the existing `ga4_page_view` and `ga4_user_event` Custom Event
+triggers/tags. A normal feature PR may add or change dataLayer params,
+taxonomy rows, and tests, but must not create a new GTM trigger/tag per
+event. Ecommerce uses the separate ecommerce trigger/tag and GA4
+ecommerce fields (`currency`, `value`, `transaction_id`, `items[]`).
+
 ## Event taxonomy
 
 | Event name | Event group | Required params | Optional/group params | Trigger | File/line anchor | Server/browser side | Decision/use |

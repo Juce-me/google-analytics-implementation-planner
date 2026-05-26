@@ -38,6 +38,10 @@ regulated finance, stop before using this template and escalate.
 existing BigQuery export, paid acquisition budget. This determines the
 architecture in §2.
 
+**GTM web decision:** <yes/no>. If yes: why GTM is needed, who owns
+container changes, environment/container ids, and whether ecommerce is
+active.
+
 ## 2. Architecture (the deliberate choice)
 
 State the chosen pattern and the alternatives rejected:
@@ -55,6 +59,32 @@ client/server sender, and payload contract. For example:
 Measurement Protocol body, or `gtag('event', name, params)` for browser
 events, or Firebase SDK `logEvent` for app events. For EU MP collection,
 consider `https://region1.google-analytics.com/mp/collect?...`.>
+
+### GTM web dataLayer contract (if selected)
+
+Normal web analytics uses only two Custom Event triggers/tags:
+
+| Trigger event | GTM tag | GA4 event name | Data layer variables |
+| --- | --- | --- | --- |
+| `ga4_page_view` | `GA4 - Page View` | `page_view` | `<page_location, page_title, page_referrer, logical_page, ...>` |
+| `ga4_user_event` | `GA4 - User Event` | `{{DLV - ga4_event_name}}` | `<shared + event-specific params from §5>` |
+
+Normal event example:
+
+```js
+window.dataLayer.push({
+  event: 'ga4_user_event',
+  ga4_event_name: 'sign_up',
+  event_group: 'auth',
+  method: 'password'
+});
+```
+
+New normal events update code, tests, and §5 only; they do not create new
+GTM tags/triggers. Ecommerce, if active, uses a separate `ga4_ecommerce`
+trigger/tag with GA4 ecommerce fields and `items[]`. If the page-view
+tag emits `page_view`, disable duplicate automatic/enhanced page-view
+sends.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
