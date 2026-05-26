@@ -16,6 +16,15 @@ future feature work updates.
 - GA4 events use `event_name` plus specific event parameters. Do not use
   Universal Analytics-style `event_category`, `event_action`, or
   `event_label`.
+- The canonical envelope uses `trigger: "userevent"` and
+  `event_type: "pageview" | "event"`. `event_name` is already the GA4
+  event name; do not maintain a separate internal name or `ga4_event_name`.
+- Product/surface grouping uses `feature_name` or `screen_name`, not
+  `event_group`.
+- Page/screen context belongs in `userParams` by default, using
+  GA4/GTM-compatible keys such as `page_location`, `page_title`,
+  `screen_name`, and `page_name` when a logical product page name is
+  needed.
 - Missing values are represented as null/omitted, not boolean presence
   dimensions. Prefer `geo: null` over `geo_exists: false`.
 
@@ -24,7 +33,8 @@ future feature work updates.
 Every user-visible feature PR must answer:
 
 - What decision will this feature's analytics support?
-- Which event name, event group, and typed params are added or changed?
+- Which `trigger`, `event_type`, `event_name` where applicable,
+  `feature_name` or `screen_name`, and typed params are added or changed?
 - Which GA4/GTM built-in, predefined dimension/metric, recommended
   parameter, or existing dataLayer field was reused before adding a new
   property?
@@ -42,8 +52,8 @@ Never add bulk custom definitions or boolean presence dimensions such as
 ## GTM web contract
 
 If the active architecture uses GTM web, normal analytics events must use
-the existing `ga4_page_view` and `ga4_user_event` Custom Event
-triggers/tags. A normal feature PR may add or change app-owned dataLayer
+the existing `userevent` Custom Event trigger and approved reusable GA4
+Event tag(s). A normal feature PR may add or change app-owned dataLayer
 params, taxonomy rows, and tests, but must not create a new GTM
 trigger/tag per event or duplicate GTM/GA4 built-ins for page, device,
 geo, campaign, traffic-source, or click fields. Ecommerce uses the
@@ -52,15 +62,15 @@ separate ecommerce trigger/tag and GA4 ecommerce fields (`currency`,
 
 ## Event taxonomy
 
-| Event name | Event group | Required params | Optional/group params | Trigger | File/line anchor | Server/browser side | Decision/use |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `sign_up` | auth | `method` | `plan_tier` | Successful account creation | `src/auth/signup.ts:42` | browser | Signup funnel conversion |
+| Trigger | Event type | Event name | Feature/screen | userParams | eventParams | File/line anchor | Server/browser side | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`, `page_location`, `page_title` | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | Signup funnel conversion |
 
 ## Required params
 
-| Event name | Param | Type | Allowed values / shape | Required test |
-| --- | --- | --- | --- | --- |
-| `sign_up` | `method` | string | `password`, `oauth_google`, `sso` | `tests/analytics/signup.test.ts` |
+| Event type | Event name | Param | Type | Allowed values / shape | Required test |
+| --- | --- | --- | --- | --- | --- |
+| `event` | `sign_up` | `eventParams.method` | string | `password`, `oauth_google`, `sso` | `tests/analytics/signup.test.ts` |
 
 ## Allowlist
 
@@ -73,12 +83,12 @@ State-changing routes without analytics must be documented here.
 
 ### Dimensions
 
-| Display name | Parameter/User property | Scope | Event group(s) | GA4 predefined alternative checked | Description | Decision/use |
+| Display name | Parameter/User property | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- |
 
 ### Metrics
 
-| Display name | Parameter | Scope | Event group(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
+| Display name | Parameter | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## Privacy rules
@@ -98,7 +108,7 @@ State-changing routes without analytics must be documented here.
 CI must fail when:
 
 - A state-changing route is neither tracked nor allowlisted.
-- Code event names differ from the taxonomy.
+- Code event envelopes differ from the taxonomy.
 - Required params lack tests.
 - Captured payloads contain forbidden keys or forbidden value shapes.
 

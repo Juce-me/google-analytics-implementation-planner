@@ -59,32 +59,48 @@ Reserve dataLayer keys for app-owned semantics GA4/GTM cannot infer.
 window.dataLayer = window.dataLayer || [];
 
 window.dataLayer.push({
-  event: 'ga4_page_view',
-  logical_page: 'pricing',
-  feature_area: 'marketing'
+  event: 'userevent',
+  trigger: 'userevent',
+  event_type: 'pageview',
+  feature_name: 'marketing',
+  screen_name: 'pricing',
+  userParams: {
+    page_name: 'pricing',
+    page_location: '/pricing',
+    page_title: 'Pricing'
+  }
 });
 
 window.dataLayer.push({
-  event: 'ga4_user_event',
-  ga4_event_name: 'sign_up',
-  event_group: 'auth',
-  logical_page: 'signup',
-  method: 'password',
-  plan_tier: 'team'
+  event: 'userevent',
+  trigger: 'userevent',
+  event_type: 'event',
+  event_name: 'sign_up',
+  feature_name: 'auth',
+  screen_name: 'signup',
+  userParams: {
+    page_name: 'signup',
+    page_location: '/signup',
+    page_title: 'Sign up'
+  },
+  eventParams: {
+    method: 'password',
+    plan_tier: 'team'
+  }
 });
 ```
 
 Container setup for normal analytics:
 
-| GTM trigger | GTM tag | GA4 event name | Params |
-| --- | --- | --- | --- |
-| Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; app-owned page params only if needed |
-| Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific dataLayer params not covered by GA4/GTM |
+| GTM trigger | Condition | GTM tag | GA4 event name | Params |
+| --- | --- | --- | --- | --- |
+| Custom Event `userevent` | `event_type = pageview` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; `userParams.*` only if needed |
+| Custom Event `userevent` | `event_type = event` | GA4 Event `GA4 - User Event` | `{{DLV - event_name}}` | `eventParams.*` plus `userParams.*` not covered by GA4/GTM |
 
 Adding a normal event should update code, tests, and the taxonomy only.
-It should not require another GTM trigger or tag. GTM changes only when a
-new app-owned data layer variable is truly needed, when a parameter is
-retired, or when ecommerce is introduced.
+It should not require another GTM trigger or per-event tag. GTM changes
+only when a new app-owned data layer variable is truly needed, when a
+parameter is retired, or when ecommerce is introduced.
 
 If the page-view tag emits `page_view`, disable duplicate automatic
 page-view sends from the Google tag / Enhanced Measurement source of

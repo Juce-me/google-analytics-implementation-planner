@@ -127,6 +127,15 @@ register it as a custom dimension.
 
 ## Validation checklist for the plan reviewer
 
+- [ ] Every emitted payload uses the canonical envelope:
+      `trigger: "userevent"` and `event_type: "pageview" | "event"`.
+- [ ] `event_name` is the final GA4 event name; there is no
+      internal-to-GA4 event rewrite table.
+- [ ] No payload uses `event_group` or `ga4_event_name`.
+- [ ] Product/surface grouping uses `feature_name` or `screen_name`.
+- [ ] Page/screen context lives in `userParams` with GA4/GTM-compatible
+      keys such as `page_location`, `page_title`, `screen_name`, and
+      `page_name` only when a logical product page name is needed.
 - [ ] Every event in the catalog uses a recommended name where one
       exists, or a custom name that doesn't collide with reserved.
 - [ ] Every `purchase` carries `transaction_id`, `items[]`, `currency`

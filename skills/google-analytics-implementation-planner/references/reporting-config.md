@@ -12,7 +12,7 @@ Authoritative refs (last checked: 2026-05-26):
 For every parameter you fire, decide it's exactly one:
 
 - **Dimension** if you'll **group / filter / pivot** by it. Categorical.
-  Examples: `plan_tier`, `feature_area`, `signup_method`, `locale`,
+  Examples: `plan_tier`, `feature_name`, `method`, `locale`,
   `experiment_variant`.
 - **Metric** if you'll **aggregate** it (sum, average). Numeric with a
   unit. Examples: `latency_ms`, `items_count`, `score`, `duration_sec`.
@@ -99,7 +99,7 @@ for the high-cardinality tail.
 **Safe-cardinality candidates:**
 
 - `plan_tier` (handful of values).
-- `feature_area` (one of ~20 product areas).
+- `feature_name` (one of ~20 product areas).
 - `experiment_variant` (a / b / control).
 - `locale` (under 200 values normally).
 - `referrer_domain` (bounded if you bucket "(other)" yourself first).
@@ -126,22 +126,23 @@ Only use a boolean when the decision is genuinely boolean and the name
 describes the state itself, not the presence of another field (for
 example, `is_trial_account` may be valid; `trial_account_exists` is not).
 
-## Group-specific dimensions
+## Feature/screen-specific dimensions
 
 GA4 does not need a generic category/action/label triplet. For each
-event group, define the specific low-cardinality parameters that make
-that group's reports useful, then register only the parameters the team
-will actually group/filter by. Treat "event group" as planning
-taxonomy; don't log a generic `event_group` parameter just to recreate
-Universal Analytics categories. Prefer built-ins first: for geo, device,
-campaign, page/screen, and traffic source questions, use GA4's predefined
-dimensions unless the plan proves they cannot answer the decision.
+feature or screen context, define the specific low-cardinality parameters
+that make those reports useful, then register only the parameters the
+team will actually group/filter by. Use `feature_name` or `screen_name`
+for product/surface grouping; don't log a generic `event_group`
+parameter just to recreate Universal Analytics categories. Prefer
+built-ins first: for geo, device, campaign, page/screen, and traffic
+source questions, use GA4's predefined dimensions unless the plan proves
+they cannot answer the decision.
 
 Examples:
 
 - Auth: `method`, `login_result`, `account_type`.
 - Search: `search_location`, `result_count_bucket`.
-- Content: `content_type`, `feature_area`.
+- Content: `content_type`, `feature_name`.
 - Funnel: `funnel_name`, `funnel_step`, `plan_tier`.
 - Errors: `error_class`, `surface`, `severity`.
 
@@ -156,16 +157,16 @@ Property → Custom Definitions. Format:
 
 Dimensions:
 
-| Display name | Parameter/User property | Scope | Event group(s) | GA4 predefined alternative checked | Description | Decision/use |
+| Display name | Parameter/User property | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- |
 | Plan tier | `plan_tier` | User | auth, funnel | none | Subscription tier at event time | D1, D3 |
-| Feature area | `feature_area` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
+| Feature name | `feature_name` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
 | Search location | `search_location` | Event | search | Search term is not enough | UI surface that initiated search | D2 |
 | Experiment variant | `experiment_variant` | User | all | none | A/B test cell | D4 |
 
 Metrics:
 
-| Display name | Parameter | Scope | Event group(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
+| Display name | Parameter | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Latency | `latency_ms` | Event | system | no equivalent for app-specific timing | Server response time | ms | D5 |
 

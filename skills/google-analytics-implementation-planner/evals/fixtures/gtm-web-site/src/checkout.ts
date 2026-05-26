@@ -22,7 +22,7 @@ export async function subscribe(priceId: string) {
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
     event: "ga4_ecommerce",
-    ga4_ecommerce_event_name: "purchase",
+    event_name: "purchase",
     transaction_id: checkout.sessionId,
     currency: "USD",
     value: checkout.subtotal,
