@@ -1,9 +1,11 @@
 # Identity and sessions in GA4
 
 Authoritative refs:
-- <https://support.google.com/analytics/answer/9355972> (User-ID feature)
-- <https://support.google.com/analytics/answer/9213390> (session unification)
-- <https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id>
+- CONFIRMED: <https://support.google.com/analytics/answer/9355972> (User-ID feature)
+- CONFIRMED: <https://support.google.com/analytics/answer/9213390> (session unification)
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id>
+- CONFIRMED: <https://support.google.com/analytics/answer/11986666> (GA4 vs UA session differences)
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference> (MP identifiers)
 
 ## The two ids
 
@@ -22,6 +24,10 @@ modes.
   if you tie cookie lifetime to session.
 - Persistence target: 2 years (matches `_ga` cookie default; the cookie
   resets on every visit so it survives indefinitely for active users).
+
+For app streams using Measurement Protocol, the parallel identifier is
+`app_instance_id` in the request body, with `firebase_app_id` in the URL.
+Do not send app MP events with a web `client_id` contract.
 
 ### `user_id` — the authenticated identity
 
@@ -72,7 +78,10 @@ GA4 defines a session as "a group of user interactions on your site/app
 within a given time frame". Defaults:
 
 - 30 minutes of inactivity → session ends.
-- A new day in the property's reporting timezone → session ends.
+
+GA4 sessions are **not** restarted at midnight and are **not** restarted
+when new campaign parameters are encountered. Those are Universal
+Analytics behaviors; don't copy them into server-minted GA4 sessions.
 
 ### Client-side (gtag.js): automatic
 
@@ -129,20 +138,22 @@ If you have a web stream, an app stream, and server-side calls, and
 want all three to land on the same user:
 
 1. Every event must carry `user_id` once authenticated.
-2. Every event must carry a `client_id` that matches the originating
-   surface (web's `_ga` cookie; app's app-instance-id; server's
-   persisted id linked to the user).
+2. Every event must carry the surface's GA4 device/app identifier:
+   web uses `client_id` from the `_ga` cookie; app streams use
+   `app_instance_id`; server-only events use the persisted identifier
+   linked to the user and accepted in the plan's reporting trade-off.
 3. Property setting: Admin → Property → Reporting Identity → choose
-   "Blended" or "Observed" so GA4 uses both `user_id` and `client_id`
-   for stitching.
+   "Blended" or "Observed" so GA4 uses both `user_id` and the
+   device/app identifier for stitching.
 
 ## Logout, deletion, rotation
 
 - **Logout:** clear `user_id` on the next event, keep `client_id`. The
   user is now anonymous on this device until next login.
 - **Account deletion:** call User-Deletion API with every known
-  `user_id` and `client_id` for that user. Propagate to BigQuery
-  export. See [privacy-consent.md](privacy-consent.md) §erasure.
+  `user_id` plus relevant web `client_id` / app `app_instance_id` for
+  that user. Propagate to BigQuery export. See
+  [privacy-consent.md](privacy-consent.md) §erasure.
 - **Pepper rotation:** maintain old and new hashes during a window;
   send events with the new hash; backfill stored ids. Never have two
   active peppers in production for the same user.

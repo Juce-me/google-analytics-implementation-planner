@@ -1,14 +1,19 @@
 # GA4 server-side — Measurement Protocol
 
 Authoritative docs:
-- <https://developers.google.com/analytics/devguides/collection/protocol/ga4>
-- <https://developers.google.com/analytics/devguides/collection/protocol/ga4/validating-events>
-- <https://developers.google.com/analytics/devguides/collection/protocol/ga4/sending-events>
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/protocol/ga4>
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference>
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/protocol/ga4/validating-events>
+- CONFIRMED: <https://developers.google.com/analytics/devguides/collection/protocol/ga4/sending-events>
 
 Re-verify before locking a plan — Google has changed payload shape and
 required fields more than once.
 
 ## When to use server-side at all
+
+Measurement Protocol **augments** automatic collection through gtag.js,
+GTM, or Firebase. It is not the default replacement for client/app
+tagging; full server-to-server GA4 can produce partial reporting.
 
 Use Measurement Protocol when **at least one** is true:
 
@@ -17,17 +22,29 @@ Use Measurement Protocol when **at least one** is true:
   background renderer completed).
 - The browser doesn't have the truth (server-only context: real
   user-agent, real IP for geo, true duration, request id).
-- Compliance forbids client-side beacons (strict EU defaults, child
-  audiences with COPPA disable).
+- You are joining online and offline behavior and already have the
+  browser/app identifier from automatic collection.
 
 If none apply, gtag.js is cheaper, simpler, and gives you Consent Mode
-v2 modeling for free. Don't pay the server-side tax for nothing.
+v2 behavior through Google tags. Don't pay the server-side tax for
+nothing. If compliance forbids any client/app beacon, escalate instead
+of assuming MP is a safe workaround.
 
 ## Endpoint and auth
+
+Web stream:
 
 ```
 POST https://www.google-analytics.com/mp/collect
   ?measurement_id=G-XXXXXXX
+  &api_secret=<from Admin → Data Streams → Measurement Protocol API secrets>
+```
+
+App stream:
+
+```
+POST https://www.google-analytics.com/mp/collect
+  ?firebase_app_id=<Firebase app id>
   &api_secret=<from Admin → Data Streams → Measurement Protocol API secrets>
 ```
 
@@ -38,7 +55,8 @@ toward your data):
 POST https://www.google-analytics.com/debug/mp/collect?measurement_id=...&api_secret=...
 ```
 
-Use the debug endpoint in CI for every event in the catalog.
+Use `firebase_app_id` instead of `measurement_id` for app streams. Use
+the debug endpoint in CI for every event in the catalog.
 
 ## Payload shape (the contract)
 
@@ -47,7 +65,6 @@ Use the debug endpoint in CI for every event in the catalog.
   "client_id": "555.123",
   "user_id": "<hashed+peppered authenticated id, optional>",
   "timestamp_micros": 1716700000000000,
-  "non_personalized_ads": true,
   "consent": {
     "ad_user_data": "GRANTED",
     "ad_personalization": "DENIED"
@@ -72,10 +89,14 @@ Use the debug endpoint in CI for every event in the catalog.
 
 ### Required-or-it-silently-drops fields
 
-- `client_id` — must match what gtag.js mints on the browser if you want
-  to stitch web + server events. Read `_ga` cookie value, strip the
-  `GA1.1.` prefix. If the event is purely server-side (no browser
-  involved), mint a stable id (UUIDv4) and persist it.
+- Web streams: `client_id` must match what gtag.js mints on the browser
+  if you want to stitch web + server events. Read `_ga` cookie value,
+  strip the `GA1.1.` prefix. If the event is purely server-side (no
+  browser involved), mint a stable id (UUIDv4) and persist it, while
+  accepting partial reporting.
+- App streams: use `firebase_app_id` in the URL and `app_instance_id` in
+  the body. `app_instance_id` is not the same as a web `client_id`; get
+  it from the Firebase SDK.
 - Inside every event's `params`:
   - `session_id` — server-side does NOT inherit GA4's auto session.
     Either mint one (UNIX seconds at session start, persist for 30 min
@@ -87,6 +108,12 @@ Use the debug endpoint in CI for every event in the catalog.
 
 ### Common silent failures
 
+- Production endpoint returns `2xx` when the HTTP request is received,
+  even if the payload is malformed, incorrect, or not processed. Use the
+  debug endpoint and `ENFORCE_RECOMMENDATIONS` validation before live
+  sends.
+- More than 25 events in the `events[]` array or JSON POST body
+  >= 130 KB → payload is outside MP limits.
 - `timestamp_micros` more than 72h in the past → event dropped, no
   error in production endpoint. Debug endpoint surfaces it.
 - Missing `engagement_time_msec` → event lands but doesn't count as
@@ -140,14 +167,16 @@ Never send raw email, raw user_id, or any reversible identifier. See
 
 ## Quotas
 
-Per measurement id:
-- 500 events per request (batched in the `events` array).
+Per request:
+- 25 events per request (batched in the `events` array).
 - 25 params per event (same cap as client).
-- 4 MB per request body.
+- JSON POST body must be less than 130 KB.
+- Parameter names: 40 chars or fewer.
+- Parameter values: 100 chars or fewer for Standard properties, 500
+  chars or fewer for Analytics 360 properties.
 
-Soft rate limit ~10 RPS per measurement id without warning — if your
-load exceeds that, add jitter / batching / and consider Measurement
-Protocol's recommended batch size (50 events per call).
+If you batch, shard into chunks that satisfy both the 25-event and
+130-KB limits. Keep retries jittered and bounded.
 
 ## Test plan
 

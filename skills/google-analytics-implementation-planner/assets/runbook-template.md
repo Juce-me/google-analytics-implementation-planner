@@ -54,27 +54,35 @@ Admin (gear icon, bottom left) → Property column.
 
 Admin → Property → **Custom Definitions**.
 
+Before creating anything, confirm the plan checked GA4 predefined
+dimensions/metrics and recommended-event parameters first. Do not create
+custom definitions for built-ins, boolean presence flags, or every event
+parameter in the catalog. More than 10 first-pass custom definitions
+requires the explicit justification from plan §6.
+
 Custom dimensions tab → Create custom dimension. Paste rows from
 plan §6:
 
-| Display name | Scope | Description | Event parameter / User property |
-| --- | --- | --- | --- |
-| Plan tier | User | Subscription tier at event time | `plan_tier` |
-| Feature area | Event | Top-level product area | `feature_area` |
-| Experiment variant | User | A/B test cell | `experiment_variant` |
-| ... | | | |
+| Display name | Parameter/User property | Scope | Event group(s) | GA4 predefined alternative checked | Description | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- |
+| Plan tier | `plan_tier` | User | auth, funnel | none | Subscription tier at event time | D1, D3 |
+| Feature area | `feature_area` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
+| Search location | `search_location` | Event | search | Search term is not enough | UI surface that initiated search | D2 |
+| Experiment variant | `experiment_variant` | User | all | none | A/B test cell | D4 |
+| ... | ... | ... | ... | ... | ... | ... |
 
 Custom metrics tab → Create custom metric. Specify **unit** correctly:
 
-| Display name | Scope | Description | Parameter | Unit of measurement |
-| --- | --- | --- | --- | --- |
-| Latency | Event | Server response time | `latency_ms` | Milliseconds |
-| ... | | | | |
+| Display name | Parameter | Scope | Event group(s) | GA4 predefined alternative checked | Description | Unit of measurement | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Latency | `latency_ms` | Event | system | no equivalent for app-specific timing | Server response time | Milliseconds | D5 |
+| ... | ... | ... | ... | ... | ... | ... | ... |
 
-> **Cannot be deleted** once created — only archived. Double-check
-> spelling and case of the parameter name BEFORE saving.
+> Double-check spelling and case of the parameter name BEFORE saving.
+> Archiving frees quota for new definitions, but breaks dependent
+> audiences, explorations, reports, and ads integrations.
 
-## 3. Mark key events (conversions)
+## 3. Mark key events
 
 Admin → Property → **Events** → after the event has fired at least once
 (or after manual creation), toggle **Mark as key event**. For events
@@ -115,7 +123,9 @@ Content-Type: application/json
 
 Payload shape is exactly the one approved in the design plan. Do not add
 params outside the event taxonomy. Validate every catalog event against
-the debug endpoint before enabling live sends.
+the debug endpoint before enabling live sends. Web streams use
+`measurement_id` + `client_id`; app streams use `firebase_app_id` +
+`app_instance_id`.
 
 ## 5. Consent Mode v2 (web)
 
@@ -206,7 +216,9 @@ malformed payload — fix before live calls.
 
 ### Privacy gates
 
-- Consent denied: zero third-party analytics sends.
+- Basic consent mode denied: zero third-party analytics sends.
+- Advanced consent mode denied: only approved cookieless pings; no
+  cookies or full measurement payload.
 - Minor / age-unclassified user: zero analytics sends.
 - Payload sweep: no forbidden keys or forbidden value shapes.
 - Delivery failure: UX still succeeds; only non-PII counters/logs change.
@@ -253,6 +265,22 @@ If the live deploy creates a problem:
    code commit.
 2. **Server-side (MP):** flip a feature flag to disable analytics
    sends. The queue drains, drop counter goes to 100%, no user impact.
-3. **Custom dimensions:** cannot be deleted; archive instead.
+3. **Custom definitions:** archive unused definitions if needed; check
+   dependent audiences, explorations, reports, and ads integrations
+   first.
 4. **Communicate** — note the rollback in the design plan's revision
    header.
+
+## Outcome
+
+Fill only after implementation.
+
+- Outcome: <implemented as planned | implemented with changes |
+  superseded by implementation | obsolete before execution>
+- Source of truth after execution: <GA4 admin links / code/docs paths>
+
+## Current Accuracy
+
+Fill only after implementation. State whether this runbook still matches
+the live GA4/GTM/MP configuration, and record doc-review coverage for
+admin setup, consent, privacy, rollback, and operations links.

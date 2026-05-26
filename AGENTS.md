@@ -193,7 +193,7 @@ This repo is a **skill-development environment** for `skills/google-analytics-im
 - Run locally: not applicable.
 
 ### Layout
-- Project root: `/Users/juce/Documents/devs/mega-analytics-skill/`.
+- Project root: `/Users/juce/Documents/devs/google-analytics-skill/`.
 - The skill: `skills/google-analytics-implementation-planner/` (entry point `SKILL.md`, Codex metadata in `agents/openai.yaml`, deep-dive docs in `references/`, output templates in `assets/`, test prompts in `evals/`).
 - Docs: `docs/agents.md` defines agent work artifact rules and doc-review criteria; agent artifacts live under `docs/agents/features/`, `docs/agents/prompts/`, `docs/agents/bugfixes/`, and `docs/agents/reviews/`; `postmortem/` contains the postmortem workflow.
 - Top-level `README.md` documents the project's purpose and how to use the skill.
@@ -223,6 +223,8 @@ This repo is a **skill-development environment** for `skills/google-analytics-im
 - Delete stale learnings when the underlying issue goes away.
 
 When the user corrects your approach, append a one-line rule here before ending the session. Write it concretely ("Always use X for Y"), never abstractly ("be careful with Y"). If an existing line already covers the correction, tighten it instead of adding a new one. Remove lines when the underlying issue goes away (model upgrades, refactors, process changes).
+
+- GA4 custom definitions must reuse predefined dimensions/metrics first; never create bulk or boolean-presence dimensions such as `*_exists` or `has_*`.
 
 ---
 

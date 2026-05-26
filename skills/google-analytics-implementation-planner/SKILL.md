@@ -148,15 +148,21 @@ be verified, do not use it as a requirement.
 Define a normalized internal event shape:
 
 ```
-{ name, category, action, label, logical_page, ids, consent, properties, server_timestamp }
+{ name, event_group, logical_page, ids, consent, params, server_timestamp }
 ```
 
 Then define how the GA4 `event_name` is derived — prefer GA4's
 recommended-event names where they exist (`sign_up`, `login`, `search`,
 `select_content`, `share`, `view_item`, `purchase`, `refund`, etc.) so
-GA4's built-in reports populate. Keep original fields as event parameters
-— don't collapse everything into one opaque `event_name`. The reserved
-and recommended event tables live in
+GA4's built-in reports populate. Use GA4 event parameters for additional
+context. Do **not** model Universal Analytics fields (`event_category`,
+`event_action`, `event_label`) in GA4 plans, templates, wrappers, or
+future-feature rules. Instead, define low-cardinality, group-specific
+parameters such as `feature_area`, `signup_method`, `funnel_step`,
+`content_type`, `error_class`, or `search_location`, then register only
+the ones needed for reports as custom dimensions/metrics. `event_group`
+is a planning/taxonomy field, not a default GA4 parameter to log. The
+reserved and recommended event tables live in
 [references/ga4-event-schema.md](references/ga4-event-schema.md).
 
 ### 1.5. Identity & sessions
@@ -176,16 +182,20 @@ See [references/identity-sessions.md](references/identity-sessions.md).
 The three patterns and when each is right:
 
 - **gtag.js client-side** — fastest to ship, full Consent Mode support out
-  of the box, modeled-conversion-friendly. Loses data to ad blockers and
-  to users who deny consent.
-- **Measurement Protocol server-side** — bypasses ad blockers, lets you
-  enrich events with server-only context (real user-agent, real geo, true
-  duration), but requires you to mint `client_id`/`session_id` yourself
-  and loses GA4's automatic enhanced-measurement events.
+  of the box, and the normal path for GA4 automatic collection. Loses
+  data to ad blockers and to users who deny consent.
+- **Measurement Protocol augmentation** — sends server/offline events
+  into an existing web/app stream, can recover critical events ad
+  blockers drop, and can enrich with server-only truth. It requires the
+  right surface identifier (`client_id` for web, `app_instance_id` for
+  app), manual `session_id`/`engagement_time_msec`, and should augment
+  gtag.js/GTM/Firebase rather than replace automatic collection.
 - **Server-side GTM (sGTM)** — hybrid: client sends to your domain, your
   sGTM container forwards to GA4. Best privacy posture, highest ops cost.
 
-Pick one concrete architecture. Do not mix incompatible paths. Distinguish
+Pick one concrete architecture. Do not mix incompatible paths, except for
+an explicit hybrid where Measurement Protocol augments a client/app stream
+for named server/offline events. Distinguish
 `gtag.js` / GA4 client traffic from Measurement Protocol traffic and from
 custom sGTM clients. Name the exact endpoint/path and payload shape:
 
@@ -210,8 +220,10 @@ Consent model + defaults (deny-by-default in the EU under Consent Mode v2),
 equal-prominence reject button, the exact gate logic. For minors: a hard
 **server-side** disable, not just a client toggle. Existing users without
 age/consent classification default to analytics-disabled / unclassified
-until they answer the gate. Consent rejection produces no third-party
-analytics event.
+until they answer the gate. Default to **basic consent mode** for strict
+privacy: consent rejection produces no third-party analytics send. If the
+plan chooses advanced consent mode, state that denied users still send
+cookieless pings and require explicit legal/product approval.
 
 No raw email, name, phone, free text, token, full URL query, raw user
 agent, or full IP leaves the app. Define forbidden keys, wildcard rules,
@@ -236,6 +248,14 @@ parameter is usually one or the other — pick deliberately. List what to
 register as custom definitions, what NOT to register (GA4 built-ins;
 high-cardinality ids that blow up GA4's cardinality limits and produce
 "(other)" rows), the scope (event vs user), and stay under GA4's caps.
+Start with GA4 predefined dimensions/metrics and recommended-event
+parameters; create custom definitions only for decision-backed questions
+that GA4 cannot already answer. For each event group, list the
+group-specific parameters that may need registration. Do not create a
+generic category/action/label replacement; create specific dimensions that
+answer the decision for that group. Do not bulk-create dimensions from all
+available params; >10 custom definitions in a first-pass plan needs an
+explicit justification.
 The current caps and decision rules live in
 [references/reporting-config.md](references/reporting-config.md).
 
@@ -285,8 +305,11 @@ It is the durable product contract after launch. It must explain how every
 future user-visible feature gets measured.
 
 Add a target-repo `AGENTS.md` rule: every user-visible feature change must
-include analytics impact: event name, category/action, typed params, tests,
-taxonomy doc update, and vendor/runbook updates when relevant.
+include analytics impact: event name, event group, typed params, tests,
+taxonomy doc update, predefined-dimension check for any new custom
+definition, and vendor/runbook updates when relevant. The rule must ban
+bulk custom-dimension creation and boolean presence dimensions such as
+`*_exists` / `has_*`.
 
 Enforce by CI drift checks:
 
@@ -323,8 +346,8 @@ exists). Use the templates:
 
 - **Design plan** (the why): `assets/plan-template.md`
   Includes: goal & decisions, schema, identity, architecture, consent/legal,
-  full event catalog (table: event name | category | action | required
-  params | trigger | file/line anchor | server/browser side |
+  full event catalog (table: event name | event group | required params |
+  optional/group params | trigger | file/line anchor | server/browser side |
   decision/use), reporting-config intent, codebase `file:line` anchor
   table, implementation order (one commit per step), verification checklist,
   risks/open questions, deliverables.
@@ -354,6 +377,16 @@ to that plan, not a replacement for it.
 - A flat list of events with no decision behind them.
 - Generic `snake_case` names that ignore GA4's recommended names — losing
   the built-in funnel, retention, and monetization reports.
+- Universal Analytics-style `event_category`, `event_action`, or
+  `event_label` parameters. GA4 plans use event names plus specific event
+  parameters/custom definitions.
+- A "register everything" custom-dimension table, especially one that
+  approaches GA4's 50 event-scoped dimension cap without proving each
+  dimension beats a predefined GA4 dimension/metric.
+- Boolean presence flags like `geo_exists`, `has_referrer`, or
+  `search_has_results`. Represent missing data as null/omitted in the
+  contract and use meaningful values such as `geo`, `referrer_domain`, or
+  `result_count_bucket`.
 - Free-text, URLs, or tokens in event parameters.
 - Synthetic `currency: "USD"` + `value: 0` on non-revenue events. Pollutes
   Monetization reports forever; GA4 won't let you "untag" historical data.
@@ -383,8 +416,11 @@ Stop and ask the user before producing a plan if any are true:
 - The user wants to track health data (HIPAA), education records (FERPA),
   or financial transactions in regulated jurisdictions. Escalate.
 - Existing analytics already ship and the user is asking for a migration,
-  not a greenfield plan. The migration risks (data discontinuity, breaking
-  saved reports, audience-rebuild time) are different work.
+  not a greenfield plan, and the migration goal/source of truth is unclear.
+  If the user has named a specific gap (for example, Stripe purchases
+  missing from an existing gtag.js property), first state migration risks,
+  then produce a migration plan with continuity, validation, and rollback
+  steps.
 
 ## 5. Reference files
 

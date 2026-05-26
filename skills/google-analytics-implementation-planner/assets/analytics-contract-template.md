@@ -12,25 +12,34 @@ future feature work updates.
   sGTM | hybrid, with endpoint/path>.
 - Privacy floor: no raw email, name, phone, free text, token, full URL
   query, raw user agent, or full IP leaves the app.
+- GA4 events use `event_name` plus specific event parameters. Do not use
+  Universal Analytics-style `event_category`, `event_action`, or
+  `event_label`.
+- Missing values are represented as null/omitted, not boolean presence
+  dimensions. Prefer `geo: null` over `geo_exists: false`.
 
 ## Future-feature rule
 
 Every user-visible feature PR must answer:
 
 - What decision will this feature's analytics support?
-- Which event name, category, action, and typed params are added or changed?
+- Which event name, event group, and typed params are added or changed?
+- If a custom definition is added, which GA4 predefined dimension/metric
+  or recommended parameter was checked first?
 - Which test asserts the event and required params?
 - Which row in the taxonomy changed?
 - Did any GA4 admin, GTM, Measurement Protocol, consent, or runbook step
   change?
 
 If no analytics event is needed, add an allowlist row with the reason.
+Never add bulk custom definitions or boolean presence dimensions such as
+`*_exists` / `has_*`.
 
 ## Event taxonomy
 
-| Event name | Category | Action | Required params | Trigger | File/line anchor | Server/browser side | Decision/use |
+| Event name | Event group | Required params | Optional/group params | Trigger | File/line anchor | Server/browser side | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `sign_up` | auth | created | `method` | Successful account creation | `src/auth/signup.ts:42` | browser | Signup funnel conversion |
+| `sign_up` | auth | `method` | `plan_tier` | Successful account creation | `src/auth/signup.ts:42` | browser | Signup funnel conversion |
 
 ## Required params
 
@@ -49,18 +58,20 @@ State-changing routes without analytics must be documented here.
 
 ### Dimensions
 
-| Display name | Param | Scope | Decision/use |
-| --- | --- | --- | --- |
+| Display name | Parameter/User property | Scope | Event group(s) | GA4 predefined alternative checked | Description | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- |
 
 ### Metrics
 
-| Display name | Param | Scope | Unit | Decision/use |
-| --- | --- | --- | --- | --- |
+| Display name | Parameter | Scope | Event group(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## Privacy rules
 
 - Scrub forbidden keys and value shapes at the source and processing layer.
-- Consent denied sends zero third-party analytics events.
+- Basic consent mode denied sends zero third-party analytics events.
+- Advanced consent mode denied sends only explicitly approved cookieless
+  pings.
 - Minor or age-unclassified users send zero analytics events.
 - User identifiers are pseudonymous and hashed with a server-only pepper.
 - IP/geo behavior: <local enrichment | precise truncation rule | disabled>.
