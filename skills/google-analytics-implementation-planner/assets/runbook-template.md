@@ -192,8 +192,8 @@ GTM admin → Workspace.
 
    | Trigger | Tag | Event name | Data layer variables to map |
    | --- | --- | --- | --- |
-   | Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | `<page_location, page_title, page_referrer, logical_page, ...>` |
-   | Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | `<shared params + event-specific params from plan §5>` |
+   | Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; only app-owned page params if needed |
+   | Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific params not covered by GA4/GTM |
 
    Adding a new normal event updates the app taxonomy/tests and the
    `ga4_user_event` payload only; it does not create another GTM trigger
@@ -212,9 +212,13 @@ GTM admin → Workspace.
 6. Google tags have built-in consent checks. Add required consent only
    when deliberately implementing basic-mode blocking; otherwise you
    suppress advanced-mode cookieless pings/modeling.
-7. Variables → enable built-ins (Page Path, Click ID, Click URL) and
-   create the Data Layer Variables listed above. Do not create variables
-   for unapproved params.
+7. Variables → enable built-ins first (Page URL, Page Path, Referrer,
+   Click ID, Click URL, click classes/text, scroll/form/error variables
+   as needed). Create Data Layer Variables only for app-owned params that
+   GA4/GTM does not already provide, such as `logical_page`,
+   `feature_area`, `ga4_event_name`, and event-specific business fields.
+   Do not create variables for page, device, geo, campaign, traffic, or
+   click fields that built-ins already cover.
 8. Preview before publishing. Confirm normal page/user events fire only
    the two normal triggers/tags; ecommerce fires only its dedicated path.
    Publish only after Tag Assistant green

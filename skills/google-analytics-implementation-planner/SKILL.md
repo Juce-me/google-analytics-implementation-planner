@@ -138,8 +138,7 @@ docs and cite sources for every claim about:
 
 - ingestion endpoint and URL path
 - client payload shape vs Measurement Protocol payload shape
-- GTM web and sGTM behavior, clients, tags, and transformations
-- GTM web dataLayer contract and Custom Event trigger/tag count
+- GTM web/sGTM behavior, clients, tags, transformations, dataLayer contract
 - recommended, automatically collected, and reserved event names
 - identity, session, `client_id`, `user_id`, and consent rules
 - event/parameter limits, custom definitions, metrics, and retention
@@ -161,10 +160,11 @@ Define a normalized internal event shape:
 Then define how the GA4 `event_name` is derived — prefer GA4's
 recommended-event names where they exist (`sign_up`, `login`, `search`,
 `select_content`, `share`, `view_item`, `purchase`, `refund`, etc.) so
-GA4's built-in reports populate. Use GA4 event parameters for additional
-context. Do **not** model Universal Analytics fields (`event_category`,
+GA4's built-in reports populate. Before adding a parameter, dataLayer variable,
+or custom definition, reuse GA4/GTM built-ins: automatic events, recommended params, predefined dimensions/metrics, and GTM Built-In Variables.
+Do **not** model Universal Analytics fields (`event_category`,
 `event_action`, `event_label`) in GA4 plans, templates, wrappers, or
-future-feature rules. Instead, define low-cardinality, group-specific
+future-feature rules. Add only low-cardinality, group-specific
 parameters such as `feature_area`, `signup_method`, `funnel_step`,
 `content_type`, `error_class`, or `search_location`, then register only
 the ones needed for reports as custom dimensions/metrics. `event_group`

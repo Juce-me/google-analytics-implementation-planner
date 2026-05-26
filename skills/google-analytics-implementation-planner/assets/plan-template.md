@@ -66,8 +66,8 @@ Normal web analytics uses only two Custom Event triggers/tags:
 
 | Trigger event | GTM tag | GA4 event name | Data layer variables |
 | --- | --- | --- | --- |
-| `ga4_page_view` | `GA4 - Page View` | `page_view` | `<page_location, page_title, page_referrer, logical_page, ...>` |
-| `ga4_user_event` | `GA4 - User Event` | `{{DLV - ga4_event_name}}` | `<shared + event-specific params from §5>` |
+| `ga4_page_view` | `GA4 - Page View` | `page_view` | GTM built-ins first; only app-owned page params if needed |
+| `ga4_user_event` | `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific params not covered by GA4/GTM |
 
 Normal event example:
 
@@ -85,6 +85,10 @@ GTM tags/triggers. Ecommerce, if active, uses a separate `ga4_ecommerce`
 trigger/tag with GA4 ecommerce fields and `items[]`. If the page-view
 tag emits `page_view`, disable duplicate automatic/enhanced page-view
 sends.
+
+Do not invent dataLayer or GA4 params for page URL/path/referrer, device,
+geo, campaign, traffic source, or click fields when GTM Built-In
+Variables or GA4 predefined dimensions/metrics already support them.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.

@@ -24,22 +24,26 @@ parameter slot is fine).
 
 ## Predefined-first rule
 
-Custom definitions are scarce and sticky. Before proposing any custom
-dimension or metric, check whether GA4 already provides the answer via:
+Custom definitions and custom implementation properties are scarce and
+sticky. Before proposing any custom event param, dataLayer variable,
+custom dimension, or custom metric, check whether GA4/GTM already
+provides the answer via:
 
 - automatically collected or enhanced-measurement events
 - recommended-event parameters
 - predefined dimensions/metrics such as page/screen, traffic source,
   device, geo, campaign, browser, operating system, landing page, and
   session source/medium
+- GTM Built-In Variables such as Page URL, Page Path, Referrer, Click ID,
+  Click URL, click classes/text, scroll depth, form, and error variables
 - User-ID, transaction ID, or ecommerce `items[]` semantics
 
-Only create a custom definition when a named decision cannot be answered
-from those built-ins. The registration table must include the predefined
-alternative that was checked. A first-pass implementation should usually
-stay in single digits; more than 10 custom definitions needs explicit
-justification. Never generate 50-ish dimensions from "all params we might
-want someday."
+Only create a custom property/configuration when a named decision cannot
+be answered from those built-ins. The registration table must include the
+predefined alternative that was checked. A first-pass implementation
+should usually stay in single digits; more than 10 custom definitions
+needs explicit justification. Never generate 50-ish dimensions from "all
+params we might want someday."
 
 ## Scope: event vs user
 

@@ -3,6 +3,8 @@
 Authoritative docs (last checked: 2026-05-26):
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager>
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager/datalayer>
+- CONFIRMED: <https://support.google.com/tagmanager/answer/7182738>
+- CONFIRMED: <https://support.google.com/tagmanager/answer/7683056>
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager/server-side>
 - CONFIRMED: <https://developers.google.com/tag-platform/gtagjs>
 - CONFIRMED: <https://developers.google.com/tag-platform/security/concepts/consent-mode>
@@ -47,14 +49,17 @@ Implementation: a single `<script>` tag in the layout, one `gtag('event',
 First ask whether GTM web will be used. If not, do not invent container
 setup. If yes, default to a low-configuration dataLayer contract:
 
+**Built-ins first:** do not push custom page, click, device, geo,
+campaign, or traffic-source properties when GA4 or GTM already provides
+them. Use GTM Built-In Variables (Page URL, Page Path, Referrer, Click
+ID, Click URL, etc.) and GA4 predefined dimensions/metrics first.
+Reserve dataLayer keys for app-owned semantics GA4/GTM cannot infer.
+
 ```js
 window.dataLayer = window.dataLayer || [];
 
 window.dataLayer.push({
   event: 'ga4_page_view',
-  page_location: location.href,
-  page_title: document.title,
-  page_referrer: document.referrer || null,
   logical_page: 'pricing',
   feature_area: 'marketing'
 });
@@ -73,13 +78,13 @@ Container setup for normal analytics:
 
 | GTM trigger | GTM tag | GA4 event name | Params |
 | --- | --- | --- | --- |
-| Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | Page-view data layer variables |
-| Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Shared + event-specific data layer variables |
+| Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; app-owned page params only if needed |
+| Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific dataLayer params not covered by GA4/GTM |
 
 Adding a normal event should update code, tests, and the taxonomy only.
 It should not require another GTM trigger or tag. GTM changes only when a
-new shared/event-specific data layer variable must be parsed, when a
-parameter is retired, or when ecommerce is introduced.
+new app-owned data layer variable is truly needed, when a parameter is
+retired, or when ecommerce is introduced.
 
 If the page-view tag emits `page_view`, disable duplicate automatic
 page-view sends from the Google tag / Enhanced Measurement source of

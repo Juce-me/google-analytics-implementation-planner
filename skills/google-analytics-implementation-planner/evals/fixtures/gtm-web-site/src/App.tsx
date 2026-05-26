@@ -18,8 +18,7 @@ export function App() {
     pushAnalyticsEvent({
       event: "ga4_page_view",
       logical_page: logicalPage,
-      page_title: document.title,
-      page_location: window.location.href
+      feature_area: "marketing"
     });
   }
 
