@@ -18,6 +18,10 @@ gets one line explaining why ("not enough volume", "duplicates X",
 - [ ] Landing pages — logical names, not URLs (`/` → `home`,
       `/pricing` → `pricing`).
 - [ ] Authenticated app screens (dashboard, settings, profile).
+- [ ] Route tables, controller actions, server loaders/actions, API
+      endpoints, and middleware that change state.
+- [ ] Forms and validation surfaces (submit success, submit failure,
+      abandonment if the product decision needs it).
 - [ ] Modal/dialog opens, if they're meaningful (pricing modal,
       onboarding step).
 - [ ] Empty states (worth tracking if they correlate to drop-off).
@@ -54,8 +58,9 @@ For each domain object (project, document, customer, invoice…):
 
 ## Search, filter, sort
 
-- [ ] `search` (recommended) — params: `search_term`. **Scrub the
-      term** before sending (no PII, no tokens).
+- [ ] `search` (recommended) — params: `search_term` only if it is
+      allowlisted/bucketed and cannot contain raw free text, PII, or
+      tokens. Otherwise track a safe `search_type` / `query_class`.
 - [ ] `view_search_results` (automatic in Enhanced Measurement if
       `?q=` is in URL — don't double-fire).
 - [ ] `search_no_results` — custom; high signal for content gaps.
@@ -83,6 +88,19 @@ For each multi-step flow, fire one event per step with a shared
 - [ ] `theme_changed`, `language_changed`, `notification_toggled`.
 - [ ] `account_deleted` — terminal event; ensure it fires BEFORE the
       User-Deletion API call so the event makes it through.
+
+## Admin, import/export, and integrations
+
+- [ ] Admin actions (role changed, user suspended, billing override).
+      Use low-cardinality params; never send target-user PII.
+- [ ] Import started/completed/failed — params: `import_type`,
+      `record_count_bucket`, `result`.
+- [ ] Export requested/completed/failed — params: `export_type`,
+      `row_count_bucket`, `result`.
+- [ ] File upload/download — only if not already covered by Enhanced
+      Measurement; never send filenames.
+- [ ] Integration connected/disconnected/sync_failed — params:
+      `integration_type`, `result`, `error_code`.
 
 ## Sharing, invites, virality
 

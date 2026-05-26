@@ -1,0 +1,7 @@
+interface:
+  display_name: "Google Analytics Planner"
+  short_description: "Codebase-grounded GA4 implementation plans"
+  default_prompt: "Use $google-analytics-implementation-planner to design a privacy-first GA4 instrumentation plan and setup runbook for this repo."
+
+policy:
+  allow_implicit_invocation: true

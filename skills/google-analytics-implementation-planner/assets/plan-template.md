@@ -2,7 +2,7 @@ Status: planned
 Type: feature
 Author: <your-handle>
 
-# GA4 Instrumentation — Design Plan
+# Google Analytics Implementation — Design Plan
 
 ## Revision history
 
@@ -34,7 +34,7 @@ This determines the privacy floor.
 
 **Vendor context:** GA4 property type (web / app / both), existing GTM,
 existing BigQuery export, paid acquisition budget. This determines the
-architecture in §4.
+architecture in §2.
 
 ## 2. Architecture (the deliberate choice)
 
@@ -46,13 +46,19 @@ State the chosen pattern and the alternatives rejected:
 - [ ] Server-side GTM (sGTM)
 - [ ] Hybrid: <which surfaces go where>
 
+**Selected endpoint/path and payload shape:** <exact endpoint, path,
+client/server sender, and payload contract. For example:
+`https://www.google-analytics.com/mp/collect?...` with JSON
+Measurement Protocol body, or `gtag('event', name, params)` for browser
+events.>
+
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
 
 **Reliability rules:**
 
 - [ ] Server-side calls never block the request path.
-- [ ] Bounded queue + drop-on-overflow.
+- [ ] Bounded queue + worker count + send timeout + drop-on-overflow.
 - [ ] Retries with jittered backoff for 5xx/network; never for 4xx.
 - [ ] Fail silent for users.
 - [ ] Logs contain no event params.
@@ -105,12 +111,12 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
 
 The contract. Every row must trace to a decision in §1.
 
-| Name | Category | Action | Trigger / `file:line` anchor | Required params | Consent gate | Decision |
-| --- | --- | --- | --- | --- | --- | --- |
-| `sign_up` | auth | created | `src/auth/signup.ts:42` | `method` | analytics_storage | D1 |
-| `login` | auth | created | `src/auth/login.ts:88` | `method` | analytics_storage | D1 |
-| `search` | content | issued | `src/search/handler.ts:17` | `search_term` (scrubbed) | analytics_storage | D2 |
-| ... | | | | | | |
+| Event name | Category | Action | Required params | Trigger | File/line anchor | Server/browser side | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `sign_up` | auth | created | `method` | Successful account creation | `src/auth/signup.ts:42` | browser | D1 |
+| `login` | auth | created | `method` | Successful login | `src/auth/login.ts:88` | browser | D1 |
+| `search` | content | issued | `search_term` (allowlisted/bucketed; no raw free text) | Search submitted | `src/search/handler.ts:17` | browser | D2 |
+| ... | | | | | | | |
 
 Every parameter listed here must be passed; nothing else is. The
 catalog is closed: if a feature needs a new event, the catalog gets a
@@ -146,6 +152,9 @@ new row in the same PR.
   non-EU traffic: <documented choice>.
 - CMP: <which one>. Loaded inline in `<head>`. Equal-prominence reject.
 - Server-side calls mirror consent in `consent` field.
+- Consent rejected: zero third-party analytics sends.
+- Minor or age-unclassified user: zero analytics sends until classified
+  and permitted.
 - Privacy policy: §<which one> updated with the GA4 statement.
 - DPIA: <required? completed?>.
 - Erasure pipeline: <which job, what cadence, target SLA>.
@@ -165,8 +174,35 @@ Every event in §5 has a `file:line` anchor. This section catalogs
 | Server queue | `src/analytics/queue.ts` | Bounded, drop-on-overflow |
 | CI drift check | `scripts/check_analytics.ts` | Code names == doc names |
 | User-Deletion job | `src/jobs/erase_user.ts` | GDPR erasure pipeline |
+| Analytics contract | `docs/README_ANALYTICS.md` | Future-feature measurement rule |
+| Agent rule | `AGENTS.md` | Requires analytics impact for user-visible features |
 
-## 9. Implementation order
+## 9. Future-feature analytics contract
+
+Create or update `docs/README_ANALYTICS.md` with:
+
+- The event taxonomy from §5.
+- Required param types and allowed values.
+- The allowlist for state-changing surfaces with no event.
+- The future-feature rule: event name, category/action, typed params,
+  tests, taxonomy row, and vendor/runbook updates in the same PR.
+- Links to the setup runbook and privacy/deletion flow.
+
+Add or update the target repo `AGENTS.md` rule:
+
+> User-visible feature changes must include analytics impact: event name,
+> category/action, typed params, tests, taxonomy doc update, and any
+> required vendor/runbook updates. If no event is needed, update the
+> analytics allowlist with a reason.
+
+CI drift checks:
+
+- [ ] Every state-changing route emits analytics or is allowlisted.
+- [ ] Code event names match the taxonomy.
+- [ ] Required params have tests.
+- [ ] Captured payloads pass forbidden-key and forbidden-value sweeps.
+
+## 10. Implementation order
 
 One commit per step. The implementer follows this list top to bottom.
 
@@ -181,14 +217,17 @@ One commit per step. The implementer follows this list top to bottom.
 8. Add web-vitals reporter.
 9. Background job events (Measurement Protocol).
 10. CI drift check.
-11. User-Deletion job + erasure-API integration.
+11. `docs/README_ANALYTICS.md` contract + `AGENTS.md` future-feature rule.
+12. User-Deletion job + erasure-API integration.
 
-## 10. Verification
+## 11. Verification
 
 - [ ] PII sweep CI test: every event in §5 fires with fixture user, no
       forbidden key or value-shape regex match.
+- [ ] Consent-denied test: zero third-party analytics sends.
+- [ ] Minor / age-unclassified test: zero analytics sends.
+- [ ] Exact event assertions for each critical event.
 - [ ] Exactly-one-event test for each funnel step (no double-fire).
-- [ ] Consent-denied test: zero outbound calls to GA4 domains.
 - [ ] Network-failure test: queue overflows, UX unaffected, drop
       counter increments.
 - [ ] Identity-stitch test: anonymous events + login → events appear
@@ -198,7 +237,7 @@ One commit per step. The implementer follows this list top to bottom.
 - [ ] Account-deletion smoke: deletion triggers User-Deletion API
       within SLA.
 
-## 11. Risks & open questions
+## 12. Risks & open questions
 
 - R1. <e.g., "Consent rate in EU may be <30%; modeled conversions help
       but ad attribution will be soft.">
@@ -206,10 +245,12 @@ One commit per step. The implementer follows this list top to bottom.
 - OQ1. <open question for product/legal>
 - OQ2.
 
-## 12. Deliverables
+## 13. Deliverables
 
 - This plan, frozen at v1.0 once approved.
 - The setup runbook (sibling artifact, see `assets/runbook-template.md`).
+- `docs/README_ANALYTICS.md` durable analytics contract.
+- Target repo `AGENTS.md` analytics-impact rule.
 - Typed wrapper + scrubber + consent gate code.
 - CI drift check.
 - Updated privacy policy.

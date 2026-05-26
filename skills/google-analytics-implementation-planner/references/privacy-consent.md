@@ -110,8 +110,13 @@ session
 sessionId
 cookie
 authorization
+user_agent
+raw_user_agent
 ip
 ip_address
+referer
+referrer
+page_url
 ssn
 dob
 date_of_birth
@@ -142,6 +147,7 @@ BEARER      /\bBearer\s+[A-Za-z0-9._\-+/=]+/i
 SSN_US      /\b\d{3}-\d{2}-\d{4}\b/
 CC          /\b(?:\d[ -]*?){13,19}\b/
 URL_QUERY   /\?.*?(token|key|secret|password|email)=/i
+FULL_URL_QUERY /\bhttps?:\/\/[^\s?]+?\?[^\s]+/i
 ```
 
 If a value matches any regex, drop the param entirely (do not redact in
@@ -167,6 +173,8 @@ shared invites). Before sending:
 - No demographics inference. Disable.
 - Privacy policy: explicit child-data section.
 - Parental consent flow before ANY analytics fires.
+- Existing users without age classification remain
+  analytics-disabled/unclassified until the gate is answered.
 - Escalate. This requires counsel, not a templated plan.
 
 ## Data residency reality
