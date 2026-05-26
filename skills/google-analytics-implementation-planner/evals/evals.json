@@ -1,11 +1,11 @@
 {
-  "skill_name": "analytics-plan",
+  "skill_name": "google-analytics-implementation-planner",
   "evals": [
     {
       "id": 1,
       "name": "nextjs-saas-greenfield",
       "prompt": "We're a 12-person B2B SaaS shipping a Next.js + Prisma + Postgres app to mid-market customers in the EU and US. No analytics yet. Leadership wants to know which features are actually used so we can cut the bottom 20% in next quarter's planning, and the growth lead wants signup funnel attribution from paid channels. Plan our GA4 instrumentation. The repo is open in your working directory.",
-      "expected_output": "A two-artifact deliverable: (a) a design plan in docs/agents/features/PLANNED-ga4-instrumentation.md with 3–7 named decisions, an architecture choice with rejected alternatives, a closed event catalog with file:line anchors, a consent plan that deny-defaults in EU, hashed+peppered user_id, registered custom dimensions/metrics + units, and a verification checklist; and (b) a runbook in a sibling artifact covering the GA4 admin click-paths, custom-definition registration table, Consent Mode v2 defaults snippet, and DebugView validation. Should NOT propose ecommerce events, sGTM, or BigQuery — none are justified at this scale.",
+      "expected_output": "A two-artifact deliverable: (a) a design plan in docs/agents/features/PLANNED-ga4-instrumentation.md with 3–7 named decisions, an architecture choice with rejected alternatives, a closed event catalog with file:line anchors and server/browser side, a consent plan that deny-defaults in EU, hashed+peppered user_id, registered custom dimensions/metrics + units, and a verification checklist; and (b) a runbook in a sibling artifact covering the GA4 admin click-paths, custom-definition registration table, Consent Mode v2 defaults snippet, and DebugView validation. It should also create/update docs/README_ANALYTICS.md and add an AGENTS.md rule for future feature analytics impact. Should NOT propose ecommerce events, sGTM, or BigQuery — none are justified at this scale.",
       "files": []
     },
     {
@@ -20,6 +20,13 @@
       "name": "rails-ecommerce-with-existing-ga",
       "prompt": "We already have GA4 on our Rails + Stripe ecommerce site via the gtag.js snippet in our layout. Ad-blocker rate is high; we estimate we're missing 20–30% of purchases vs Stripe's truth. Marketing is asking us to 'add server-side analytics'. We have a small ops team (2 engineers). Plan it.",
       "expected_output": "The plan should explicitly compare the three architecture options (gtag.js direct, server-side Measurement Protocol from a Rails background job on purchase webhooks, full sGTM container) and recommend Measurement Protocol — not sGTM — because the team size and the specific gap (purchase data) doesn't justify sGTM infra. Plan should specify: minting client_id from the _ga cookie at purchase, idempotent transaction_id, full ecommerce items[] payload, ISO-4217 currency, the queue/worker pattern with drop-on-overflow, and a debug-endpoint validation step. Should call out the modeled-conversion-loss tradeoff and document the rollback path.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "broad-analytics-vendor-scope",
+      "prompt": "We need product analytics and are considering Segment, PostHog, Plausible, or GA4. The app is a React + Rails B2B SaaS. What should we track and how should we set it up?",
+      "expected_output": "The skill should trigger because the ask is analytics planning, then scope-guard: confirm whether GA4/GTM is the implementation target before producing any implementation plan. It may compare GA4 as the only implemented target for this skill and recommend a separate vendor-specific skill for Segment/PostHog/Plausible. It should NOT invent Segment/PostHog/Plausible setup details.",
       "files": []
     }
   ]

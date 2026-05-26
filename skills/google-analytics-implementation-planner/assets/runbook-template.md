@@ -97,6 +97,26 @@ Admin → Data Streams → <stream> → Measurement Protocol API secrets →
 
 Repeat per environment. Never share secrets across envs.
 
+### Measurement Protocol endpoint contract
+
+Live endpoint:
+
+```text
+POST https://www.google-analytics.com/mp/collect?measurement_id=<G-ID>&api_secret=<secret>
+Content-Type: application/json
+```
+
+Debug endpoint:
+
+```text
+POST https://www.google-analytics.com/debug/mp/collect?measurement_id=<G-ID>&api_secret=<secret>
+Content-Type: application/json
+```
+
+Payload shape is exactly the one approved in the design plan. Do not add
+params outside the event taxonomy. Validate every catalog event against
+the debug endpoint before enabling live sends.
+
 ## 5. Consent Mode v2 (web)
 
 Place the **default snippet** inline in `<head>` of every server-
@@ -147,9 +167,14 @@ GTM admin → Workspace.
    container.
 4. Web container points to the sGTM endpoint instead of
    `google-analytics.com` directly.
-5. GA4 client tag inside the sGTM container forwards to GA4 with the
+5. Document the exact endpoint path that receives events, the container
+   client that claims the request, and the request payload shape.
+6. GA4 client tag inside the sGTM container forwards to GA4 with the
    measurement id.
-6. Health checks + alerting on the Cloud Run service. Document the
+7. Every transformation is either a concrete tag/client setting or custom
+   template code reviewed with this runbook. No vague "scrub in sGTM"
+   placeholders.
+8. Health checks + alerting on the Cloud Run service. Document the
    on-call.
 
 ## 8. Validation
@@ -158,8 +183,9 @@ GTM admin → Workspace.
 
 1. Admin → Property → **DebugView**.
 2. To stream a device into DebugView: install GA Debugger Chrome
-   extension, OR pass `debug_mode: true` on the gtag config (web) or
-   `?debug_mode=1` to the Measurement Protocol endpoint (server-side).
+   extension, OR pass `debug_mode: true` on the gtag config (web) or in
+   each Measurement Protocol event's `params` object with
+   `engagement_time_msec` set to a positive number.
 3. Fire each event in plan §5. Confirm it appears within seconds with
    ALL expected parameters and correct types.
 
@@ -177,6 +203,13 @@ curl -X POST \
 
 Expected response: `{"validationMessages": []}`. Any messages indicate
 malformed payload — fix before live calls.
+
+### Privacy gates
+
+- Consent denied: zero third-party analytics sends.
+- Minor / age-unclassified user: zero analytics sends.
+- Payload sweep: no forbidden keys or forbidden value shapes.
+- Delivery failure: UX still succeeds; only non-PII counters/logs change.
 
 ### Realtime report
 

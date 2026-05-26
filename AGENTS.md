@@ -178,23 +178,23 @@ Boris Cherny (creator of Claude Code) keeps his team's file around 100 lines. Un
 ## 10. Project context
 
 ### What this project is
-This repo is a **skill-development environment** for `skills/analytics-plan/` — a portable agent skill that produces GA4 instrumentation plans for any project. The deliverable is the skill itself (markdown). There is no application runtime to build or run.
+This repo is a **skill-development environment** for `skills/google-analytics-implementation-planner/` — a portable agent skill that produces GA4 instrumentation plans for any project. The deliverable is the skill itself (markdown). There is no application runtime to build or run.
 
 ### Stack
 - Content: Markdown (`SKILL.md`, reference docs, asset templates).
-- Eval prompts: JSON (`skills/analytics-plan/evals/evals.json`).
+- Eval prompts: JSON (`skills/google-analytics-implementation-planner/evals/evals.json`).
 - No package manager, no build system, no application runtime in this repo.
 
 ### Commands
 - Install: none required.
 - Build: none.
-- Test: there is no test runner. The skill is iterated via the skill-creator loop — run the prompts in `skills/analytics-plan/evals/evals.json` against an agent context with and without the skill, compare outputs qualitatively, edit, repeat. See `README.md` §"Iterating on the skill".
+- Test: there is no test runner. The skill is iterated via the skill-creator loop — run the prompts in `skills/google-analytics-implementation-planner/evals/evals.json` against an agent context with and without the skill, compare outputs qualitatively, edit, repeat. See `README.md` §"Iterating on the skill".
 - Lint/typecheck: none.
 - Run locally: not applicable.
 
 ### Layout
 - Project root: `/Users/juce/Documents/devs/mega-analytics-skill/`.
-- The skill: `skills/analytics-plan/` (entry point `SKILL.md`, deep-dive docs in `references/`, output templates in `assets/`, test prompts in `evals/`).
+- The skill: `skills/google-analytics-implementation-planner/` (entry point `SKILL.md`, Codex metadata in `agents/openai.yaml`, deep-dive docs in `references/`, output templates in `assets/`, test prompts in `evals/`).
 - Docs: `docs/agents.md` defines agent work artifact rules and doc-review criteria; agent artifacts live under `docs/agents/features/`, `docs/agents/prompts/`, `docs/agents/bugfixes/`, and `docs/agents/reviews/`; `postmortem/` contains the postmortem workflow.
 - Top-level `README.md` documents the project's purpose and how to use the skill.
 

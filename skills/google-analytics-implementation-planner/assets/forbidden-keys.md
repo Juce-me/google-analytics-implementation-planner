@@ -46,9 +46,15 @@ session_id           # exception: GA4 event param needs this; allowlist explicit
 cookie
 authorization
 auth
+user_agent
+raw_user_agent
+ua
 ip
 ip_address
 client_ip
+referer
+referrer
+page_url
 ssn
 dob
 date_of_birth
@@ -103,6 +109,7 @@ SSN_US      /\b\d{3}-\d{2}-\d{4}\b/
 CC          /\b(?:\d[ -]*?){13,19}\b/
 CVV         /\bcvv?\s*[:=]?\s*\d{3,4}\b/i
 URL_TOKEN   /\?.*?(token|key|secret|password|email|sig|signature)=/i
+FULL_URL_QUERY /\bhttps?:\/\/[^\s?]+?\?[^\s]+/i
 IPv4        /\b(?:\d{1,3}\.){3}\d{1,3}\b/
 GUID        /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i
 ```
