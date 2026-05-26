@@ -2,7 +2,7 @@
 
 A portable agent **skill** that produces a privacy-first, codebase-anchored
 Google Analytics 4 (GA4) instrumentation plan — and a separate setup
-runbook — for any web, server-side, or hybrid application.
+runbook — for any web, mobile app, server-side, or hybrid application.
 
 Built to work across coding agents that read the [AGENTS.md](https://agents.md)
 standard (Claude Code, Codex, Cursor, Windsurf, Copilot, Aider, Devin,
@@ -41,7 +41,9 @@ rule for future features.
   non-GA4 implementation plan.
 - Not a counsel substitute. For minors (COPPA / EU), health (HIPAA),
   finance (PCI / regulated), or large-scale EU monitoring, the skill
-  **escalates** instead of producing a templated plan.
+  **escalates** instead of producing a templated plan. Google Analytics
+  does not offer a HIPAA BAA, so HIPAA-regulated PHI must not be exposed
+  to GA.
 
 ## Repo layout
 
@@ -52,7 +54,7 @@ google-analytics-skill/
 ├── GEMINI.md → AGENTS.md
 ├── README.md                  # this file
 ├── docs/
-│   ├── agents.md              # Where agent work artifacts live
+│   ├── AGENTS.md              # Where agent work artifacts live
 │   └── ...                    # Per-class subfolders created on first use
 ├── postmortem/                # Incident records
 └── skills/
@@ -101,7 +103,7 @@ For a personal Codex install from this checkout:
 
 ```bash
 mkdir -p ~/.codex/skills
-ln -s /Users/juce/Documents/devs/google-analytics-skill/skills/google-analytics-implementation-planner \
+ln -s "$(pwd)/skills/google-analytics-implementation-planner" \
   ~/.codex/skills/google-analytics-implementation-planner
 ```
 
@@ -115,7 +117,7 @@ For a personal Claude Code install:
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s /Users/juce/Documents/devs/google-analytics-skill/skills/google-analytics-implementation-planner \
+ln -s "$(pwd)/skills/google-analytics-implementation-planner" \
   ~/.claude/skills/google-analytics-implementation-planner
 ```
 
@@ -123,7 +125,7 @@ For a project-local Claude Code install:
 
 ```bash
 mkdir -p .claude/skills
-ln -s /Users/juce/Documents/devs/google-analytics-skill/skills/google-analytics-implementation-planner \
+ln -s "$(pwd)/skills/google-analytics-implementation-planner" \
   .claude/skills/google-analytics-implementation-planner
 ```
 
@@ -185,9 +187,10 @@ and broad-vendor scope guarding) — extend it as the skill matures.
 - New reference files live under `skills/google-analytics-implementation-planner/references/`
   and must be pointed at from `SKILL.md`. Orphan reference files are
   dead weight — either link them or delete them.
-- Verifiable claims about GA4 / GTM / Measurement Protocol must
-  include a vendor doc URL inline. Mark each claim CONFIRMED /
-  REFUTED / PARTIAL / NOT-FOUND.
+- Verifiable claims about GA4 / GTM / Measurement Protocol must be backed
+  by vendor docs. Use section-level source lists when a section is sourced
+  as a unit, and inline URLs for disputed, surprising, or fast-changing
+  claims. Mark sources CONFIRMED / REFUTED / PARTIAL / NOT-FOUND.
 - See [AGENTS.md](AGENTS.md) for the operating rules that apply to
   all changes in this repo.
 
@@ -197,5 +200,5 @@ Initial release. The SKILL.md and reference docs are the load-bearing
 content; the templates in `assets/` and the eval prompts in `evals/`
 are starting points expected to evolve with use.
 
-Last verified against GA4 + Consent Mode v2 + Measurement Protocol
-docs: see header notes in each reference file.
+Last verified against GA4 + Consent Mode v2 + Measurement Protocol docs:
+see dated header notes in each reference file.

@@ -15,7 +15,8 @@ Add entries here in creation order:
 
 | ID | Title | Date | Severity | Status |
 | --- | --- | --- | --- | --- |
-| TODO | TODO | TODO | TODO | TODO |
+
+_No postmortems yet._
 
 ## Postmortem Template
 

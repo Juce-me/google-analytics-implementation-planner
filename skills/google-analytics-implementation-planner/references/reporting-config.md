@@ -1,6 +1,6 @@
 # GA4 reporting config — dimensions, metrics, custom definitions
 
-Authoritative refs:
+Authoritative refs (last checked: 2026-05-26):
 - CONFIRMED: <https://support.google.com/analytics/answer/14240153> (custom dimensions & metrics)
 - CONFIRMED: <https://support.google.com/analytics/answer/9355671> (cardinality)
 - CONFIRMED: <https://support.google.com/analytics/answer/14071986> (Explorations limits)

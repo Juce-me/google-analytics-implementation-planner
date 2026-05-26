@@ -31,7 +31,7 @@ Admin (gear icon, bottom left) → Property column.
 1. **Property → Property Details:** name, timezone, currency. (Currency
    here defines the report-level conversion target — set even if you
    don't have ecommerce.)
-2. **Data Streams → Web** (or App):
+2. **Data Streams → Web**:
    - Stream name, URL, stream id.
    - Enhanced Measurement → toggle: keep ON for `page_view`,
      `scroll`, `outbound click`, `site search`, `video engagement`,
@@ -41,12 +41,19 @@ Admin (gear icon, bottom left) → Property column.
      destinations.
    - Configure tag settings → Internal traffic → add IP rules for the
      office / VPN to exclude.
-3. **Property → Reporting Identity:** choose Blended / Observed /
+3. **Data Streams → iOS / Android**:
+   - Register app stream and Firebase app id.
+   - Install Firebase Analytics SDK.
+   - Document automatic events, screen-reporting source of truth, and app
+     debug mode.
+   - If using MP augmentation, capture SDK-derived `app_instance_id`; do
+     not mint it server-side.
+4. **Property → Reporting Identity:** choose Blended / Observed /
    Device-based per plan §4.
-4. **Property → Data Settings → Data Retention:** 14 months (max on
+5. **Property → Data Settings → Data Retention:** 14 months (max on
    Standard; longer requires 360). Reset user data on new activity:
    ON.
-5. **Property → Data Settings → Data Collection → Google Signals:**
+6. **Property → Data Settings → Data Collection → Google Signals:**
    ON if marketing needs demographics & cross-device; OFF if audience
    includes minors or strict-privacy use cases.
 
@@ -114,6 +121,13 @@ POST https://www.google-analytics.com/mp/collect?measurement_id=<G-ID>&api_secre
 Content-Type: application/json
 ```
 
+EU regional endpoint when required:
+
+```text
+POST https://region1.google-analytics.com/mp/collect?measurement_id=<G-ID>&api_secret=<secret>
+Content-Type: application/json
+```
+
 Debug endpoint:
 
 ```text
@@ -124,8 +138,8 @@ Content-Type: application/json
 Payload shape is exactly the one approved in the design plan. Do not add
 params outside the event taxonomy. Validate every catalog event against
 the debug endpoint before enabling live sends. Web streams use
-`measurement_id` + `client_id`; app streams use `firebase_app_id` +
-`app_instance_id`.
+`measurement_id` + `client_id` retrieved with `gtag('get')`; app streams
+use `firebase_app_id` + SDK-derived `app_instance_id`.
 
 ## 5. Consent Mode v2 (web)
 
@@ -146,23 +160,37 @@ rendered page, BEFORE any tag loader. Example:
 </script>
 ```
 
-For EU traffic the defaults are `denied`. For non-EU traffic the
-choice is documented in plan §7.
+For EEA, UK, and Switzerland traffic the defaults are `denied`. For other
+traffic the choice is documented in plan §7.
 
 Wire your CMP's "Accept" / "Reject" callbacks to call
 `gtag('consent', 'update', {…})` with the user's choice.
+
+## 5a. Firebase app consent (iOS/Android)
+
+For app streams, use Firebase SDK controls rather than the web snippet:
+
+1. Disable collection before consent where the plan requires it
+   (`setAnalyticsCollectionEnabled(false)` or platform config).
+2. On consent update, call SDK `setConsent` for analytics storage, ad
+   storage, ad user data, and ad personalization.
+3. Document whether the collection-enabled override persists across app
+   restarts and how the user can change consent later.
+4. Verify denied consent returns no `app_instance_id` for MP augmentation
+   and sends no app analytics events in basic mode.
 
 ## 6. (If using GTM) container setup
 
 GTM admin → Workspace.
 
 1. Create new container per environment. Never share across envs.
-2. Tags → New → Google Analytics: GA4 Event (or Configuration) tag.
-3. Triggers → All Pages for the Configuration tag, specific event
+2. Tags → New → Google tag for base configuration; GA4 Event tag for
+   events.
+3. Triggers → All Pages for the Google tag, specific event
    triggers for Event tags.
-4. **Consent settings** on every tag — set required consent to
-   `analytics_storage` (and `ad_storage` for ads tags) so it respects
-   defaults.
+4. Google tags have built-in consent checks. Add required consent only
+   when deliberately implementing basic-mode blocking; otherwise you
+   suppress advanced-mode cookieless pings/modeling.
 5. Variables → enable built-ins (Page Path, Click ID, Click URL).
 6. Preview before publishing. Publish only after Tag Assistant green
    for every test path.
@@ -181,10 +209,13 @@ GTM admin → Workspace.
    client that claims the request, and the request payload shape.
 6. GA4 client tag inside the sGTM container forwards to GA4 with the
    measurement id.
-7. Every transformation is either a concrete tag/client setting or custom
+7. If a backend sends MP-format requests to an sGTM Measurement Protocol
+   client, document that endpoint and debug path separately from the GA4
+   MP endpoint; do not reuse MP endpoint validation assumptions blindly.
+8. Every transformation is either a concrete tag/client setting or custom
    template code reviewed with this runbook. No vague "scrub in sGTM"
    placeholders.
-8. Health checks + alerting on the Cloud Run service. Document the
+9. Health checks + alerting on the Cloud Run service. Document the
    on-call.
 
 ## 8. Validation
@@ -241,9 +272,13 @@ key.
 Admin → Property → **BigQuery Links** → Link.
 
 1. Select GCP project.
-2. Data location: **EU** for EU residents (or as documented in plan §7).
+2. Data location: documented regional choice for EEA/UK/Switzerland
+   residents (or as documented in plan §7).
 3. Frequency: Daily (free), Streaming (paid).
 4. Include advertising identifiers: per plan §7.
+5. Document that collected User-ID data exports to BigQuery and that GA4
+   deletion requests do not delete exported rows; maintain a separate
+   dataset deletion job.
 
 ## 10. Ongoing operations
 

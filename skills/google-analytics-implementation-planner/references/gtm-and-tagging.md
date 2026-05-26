@@ -1,6 +1,6 @@
 # GTM and tagging — when, which, why
 
-Authoritative docs:
+Authoritative docs (last checked: 2026-05-26):
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager>
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager/server-side>
 - CONFIRMED: <https://developers.google.com/tag-platform/gtagjs>
@@ -45,8 +45,9 @@ Container hygiene if you add it:
   switching by hostname — variables drift.
 - Lock the prod container — only the analytics lead has publish rights,
   changes go through review.
-- Every tag has a firing trigger AND a blocking trigger for the consent
-  state it needs (`analytics_storage=denied` blocks measurement tags).
+- Google tags have built-in consent checks. Add extra required consent or
+  blocking triggers only when deliberately implementing **basic consent
+  mode**; otherwise you suppress advanced-mode cookieless pings/modeling.
 - Use Built-In Variables (Page Path, Click ID) over scraping the DOM.
 - Workspaces for changes; never edit in the default workspace.
 
@@ -59,8 +60,8 @@ the deficit costs more than the sGTM infrastructure. Concretely:
   vs. backend truth.
 - Advanced Consent Mode modeling is approved but still not enough
   because observable paid-conversion gaps remain.
-- Strict privacy posture (medical, finance, EU regulated) where third-
-  party beacons are a legal liability.
+- Strict privacy posture (medical, finance, EEA/UK/Swiss regulated) where
+  third-party beacons are a legal liability.
 
 What sGTM buys you:
 
@@ -68,6 +69,11 @@ What sGTM buys you:
   forwards to GA4 / Meta / etc.
 - You control the data leaving your domain — drop, enrich, hash.
 - Ad-blocker bypass for first-party traffic.
+
+Be precise about the path: routing browser Google tags through an sGTM
+endpoint is different from sending backend MP-format requests to an sGTM
+Measurement Protocol client. The latter does not use the GA4 MP endpoint
+and needs its own client/tag/debug contract.
 
 What sGTM costs:
 
@@ -91,8 +97,8 @@ log early events under the wrong consent state. Order:
 4. Application code firing events.
 
 A common bug: CMP loaded by GTM. Then on first paint, no consent
-defaults exist, events log under `granted` by accident, EU compliance
-breaks. Always put defaults in HTML directly.
+  defaults exist, events log under `granted` by accident, consent
+  compliance breaks. Always put defaults in HTML directly.
 
 ## Multi-domain / subdomain stitching
 

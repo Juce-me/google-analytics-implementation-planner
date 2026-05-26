@@ -1,5 +1,7 @@
 # Trackable-surface checklist
 
+Last checked: 2026-05-26.
+
 Use during step 1.2 of the SKILL. The point is to **enumerate**, not
 to "track everything" — most surfaces will get cut in step 1.1 because
 no decision needs them. But you can't decide to cut what you haven't
@@ -58,9 +60,11 @@ For each domain object (project, document, customer, invoice…):
 
 ## Search, filter, sort
 
-- [ ] `search` (recommended) — params: `search_term` only if it is
-      allowlisted/bucketed and cannot contain raw free text, PII, or
-      tokens. Otherwise track a safe `search_type` / `query_class`.
+- [ ] `search` (recommended) — requires a safe `search_term`. Send only
+      allowlisted/bucketed terms that cannot contain raw free text,
+      personal data, or tokens. If no safe `search_term` exists, use a
+      custom event such as `search_submitted` with `search_type` /
+      `query_class` instead of claiming recommended-event semantics.
 - [ ] `view_search_results` (automatic in Enhanced Measurement if
       `?q=` is in URL — don't double-fire).
 - [ ] `search_no_results` — custom; high signal for content gaps.
@@ -86,8 +90,10 @@ For each multi-step flow, fire one event per step with a shared
 - [ ] `setting_changed` — params: `setting_name`, `setting_value`
       (only if low-cardinality safe value).
 - [ ] `theme_changed`, `language_changed`, `notification_toggled`.
-- [ ] `account_deleted` — terminal event; ensure it fires BEFORE the
-      User-Deletion API call so the event makes it through.
+- [ ] `account_deleted` — terminal aggregate only if legal/product approves
+      and it carries no identifiers that will be submitted for deletion.
+      Otherwise rely on internal audit logs; a user-identified analytics
+      event may be deleted by the same erasure request.
 
 ## Admin, import/export, and integrations
 
@@ -122,9 +128,10 @@ For each multi-step flow, fire one event per step with a shared
 
 ## Errors
 
-- [ ] Server-side errors — `error` event (custom; GA4 reserves but
-      allows). Params: `error_class`, `error_route`, `status_code`,
-      `error_id` (correlate to logs).
+- [ ] Server-side errors — `server_error` or `api_error` (custom;
+      `error` is reserved and must not be emitted). Params:
+      `error_class`, `error_route`, `status_code`, `error_id`
+      (correlate to logs).
 - [ ] Client-side errors — `window.onerror` and
       `unhandledrejection`. Bucket by `error_class`; never send the
       message (may contain PII).
@@ -153,8 +160,8 @@ For each multi-step flow, fire one event per step with a shared
 
 ## Lifecycle moments
 
-- [ ] First-run — `first_visit` (auto), `app_first_open` (auto on
-      Firebase).
+- [ ] First-run — `first_visit` (web / Android instant app), `first_open`
+      (installed iOS/Android app via Firebase).
 - [ ] Activation — define what activation means (sent first message?
       created first project? invited first teammate?) and fire one
       `activation_completed` per user when the criterion is met.
@@ -170,8 +177,14 @@ For each multi-step flow, fire one event per step with a shared
 - [ ] `add_to_cart`, `remove_from_cart`, `view_cart`.
 - [ ] `begin_checkout`, `add_shipping_info`, `add_payment_info`.
 - [ ] `purchase` — `transaction_id` (idempotent!), `currency`
-      (ISO-4217), `value` = Σ items, `items[]`.
+      (ISO-4217), `value` = discounted item subtotal excluding tax and
+      shipping, `items[]`.
 - [ ] `refund` — `transaction_id` must match the original `purchase`.
+
+For mobile in-app purchases, distinguish GA4 ecommerce `purchase` from
+Firebase `in_app_purchase`. Prefer automatic Firebase store-purchase
+reporting when available; manually log only when automatic reporting
+cannot cover the flow and duplicate prevention is documented.
 
 Do NOT fire ecommerce events with synthetic `currency` and
 `value: 0` on non-revenue actions. Monetization reports cannot be

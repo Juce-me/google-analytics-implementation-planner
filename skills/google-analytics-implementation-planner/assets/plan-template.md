@@ -29,7 +29,8 @@ it.
 - D2. <decision>
 - D3. <decision>
 
-**Audience constraints:** EU / B2B / B2C / other non-regulated audience.
+**Audience constraints:** EEA/UK/Switzerland / B2B / B2C / other
+non-regulated audience.
 If the product targets children, health data, education records, or
 regulated finance, stop before using this template and escalate.
 
@@ -42,6 +43,7 @@ architecture in §2.
 State the chosen pattern and the alternatives rejected:
 
 - [ ] gtag.js client-side direct
+- [ ] Firebase Analytics SDK direct (iOS/Android app stream)
 - [ ] GTM web container
 - [ ] Measurement Protocol augmentation
 - [ ] Server-side GTM (sGTM)
@@ -51,7 +53,8 @@ State the chosen pattern and the alternatives rejected:
 client/server sender, and payload contract. For example:
 `https://www.google-analytics.com/mp/collect?...` with JSON
 Measurement Protocol body, or `gtag('event', name, params)` for browser
-events.>
+events, or Firebase SDK `logEvent` for app events. For EU MP collection,
+consider `https://region1.google-analytics.com/mp/collect?...`.>
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
@@ -60,7 +63,9 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
 
 - [ ] Server-side calls never block the request path.
 - [ ] Bounded queue + worker count + send timeout + drop-on-overflow.
-- [ ] Retries with jittered backoff for 5xx/network; never for 4xx.
+- [ ] Retries with jittered backoff only for transport failures where
+      receipt is unknown; never retry the same payload after an HTTP
+      non-2xx response.
 - [ ] Fail silent for users.
 - [ ] Logs contain no event params.
 
@@ -74,7 +79,8 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
   event_group:      enum,      // auth | content | search | funnel | system
   logical_page:     string?,   // home | dashboard | settings | ...
   ids: {
-    client_id:      string,    // browser id (or minted server id)
+    client_id:      string,    // web id from gtag('get') (or minted server id)
+    app_instance_id:string?,   // app id from Firebase SDK, app streams only
     user_id:        string?,   // hashed+peppered, only when authenticated
     session_id:     string,    // synced with GA4 session
   },
@@ -112,7 +118,8 @@ like `geo: null` / `geo: "DE"` or `referrer_domain: null` /
 
 - **Anonymous `client_id`:** <format, how minted, where persisted>.
   For app streams, use `app_instance_id` + `firebase_app_id` instead of
-  a web `client_id` contract.
+  a web `client_id` contract. `app_instance_id` must come from the
+  Firebase SDK; do not mint it server-side.
 - **Authenticated `user_id`:** hashed with `sha256(email_lower || PEPPER)`.
   Pepper rotation policy: <quarterly / on incident / never>. Storage:
   <where>.
@@ -169,13 +176,15 @@ custom definitions needs an explicit justification.
 
 ## 7. Consent & legal
 
-- Consent Mode v2 defaults: `denied` for all four signals (EU). For
-  non-EU traffic: <documented choice>.
+- Consent Mode v2 defaults: `denied` for all four signals for EEA, UK,
+  and Switzerland. For other traffic: <documented choice>.
 - CMP: <which one>. Loaded inline in `<head>`. Equal-prominence reject.
 - Server-side MP calls pass only supported MP consent fields:
   `ad_user_data` and `ad_personalization`.
 - Consent rejected: <basic mode = zero third-party analytics sends |
   advanced mode = cookieless pings with explicit approval>.
+- App consent: <Firebase `setConsent` mapping; whether
+  `setAnalyticsCollectionEnabled` disables collection before consent>.
 - Minor or age-unclassified user: zero analytics sends until classified
   and permitted.
 - Privacy policy: §<which one> updated with the GA4 statement.
@@ -194,7 +203,7 @@ Every event in §5 has a `file:line` anchor. This section catalogs
 | Consent gate | `src/analytics/consent.ts:1` | Reads CMP state |
 | Server queue | `src/analytics/queue.ts:1` | Bounded, drop-on-overflow |
 | CI drift check | `scripts/check_analytics.ts:1` | Code names == doc names |
-| User-Deletion job | `src/jobs/erase_user.ts:1` | GDPR erasure pipeline |
+| GA4 Admin API deletion job | `src/jobs/erase_user.ts:1` | Erasure pipeline |
 | Analytics contract | `docs/README_ANALYTICS.md:1` | Future-feature measurement rule |
 | Agent rule | `AGENTS.md:1` | Requires analytics impact for user-visible features |
 
@@ -242,7 +251,8 @@ One commit per step. The implementer follows this list top to bottom.
 9. Background job events (Measurement Protocol).
 10. CI drift check.
 11. `docs/README_ANALYTICS.md` contract + `AGENTS.md` future-feature rule.
-12. User-Deletion job + erasure-API integration.
+12. GA4 Admin API `properties.submitUserDeletion` job + downstream
+    erasure integration.
 
 ## 11. Verification
 
@@ -259,13 +269,13 @@ One commit per step. The implementer follows this list top to bottom.
       under same user in GA4 DebugView.
 - [ ] Each custom dimension/metric populates in DebugView within 60s.
 - [ ] Realtime report shows test event with all expected params.
-- [ ] Account-deletion smoke: deletion triggers User-Deletion API
-      within SLA.
+- [ ] Account-deletion smoke: deletion triggers GA4 Admin API
+      `properties.submitUserDeletion` for each known identifier within SLA.
 
 ## 12. Risks & open questions
 
-- R1. <e.g., "Consent rate in EU may be <30%; modeled conversions help
-      but ad attribution will be soft.">
+- R1. <e.g., "Consent rate in EEA/UK/Switzerland may be <30%; modeled
+      conversions help but ad attribution will be soft.">
 - R2.
 - OQ1. <open question for product/legal>
 - OQ2.

@@ -1,5 +1,6 @@
 # Local per-user agent settings (allowlists, hooks). Never committed.
 .claude/settings.local.json
+.venv/
 
 # macOS
 .DS_Store

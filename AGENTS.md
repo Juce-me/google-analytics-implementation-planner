@@ -36,7 +36,7 @@ These rules override everything else in this file when in conflict:
 **Goal: understand the problem and the codebase before producing a diff.**
 
 - State your plan in one or two sentences before editing. For anything non-trivial, produce a numbered list of steps with a verification check for each.
-- Do not create persistent agent plan files unless explicitly needed; when needed, use `docs/agents/` per `docs/agents.md`, not `docs/superpowers/`.
+- Do not create persistent agent plan files unless explicitly needed; when needed, use `docs/agents/` per `docs/AGENTS.md`, not `docs/superpowers/`.
 - If Superpowers is active, use the relevant Superpowers skills for planning and execution. Use `writing-plans` for implementation plans, then `subagent-driven-development` when available or `executing-plans` for plan execution.
 - Read the files you will touch. Read the files that call the files you will touch. Claude Code: use subagents for exploration so the main context stays clean.
 - Match existing patterns in the codebase. If the project uses pattern X, use pattern X, even if you'd do it differently in a greenfield repo.
@@ -73,7 +73,7 @@ The test: would a senior engineer reading the diff call this overcomplicated? If
 - Do not delete pre-existing dead code unless asked. If you notice it, mention it in the summary.
 - Do clean up orphans created by your own changes (unused imports, variables, functions your edit made obsolete).
 - Match the project's existing style exactly: indentation, quotes, naming, file layout.
-- Put reusable project rules at the highest applicable level. Subfolder `AGENTS.md` files may add stricter constraints but must not redefine artifact naming, location, or other rules set by the root template or `docs/agents.md` — if a different scheme is genuinely needed, change it at the template level so every project stays consistent. Keep `CLAUDE.md` and `GEMINI.md` symlinked to the local `AGENTS.md`.
+- Put reusable project rules at the highest applicable level. Subfolder `AGENTS.md` files may add stricter constraints but must not redefine artifact naming, location, or other rules set by the root template or `docs/AGENTS.md` — if a different scheme is genuinely needed, change it at the template level so every project stays consistent. Keep `CLAUDE.md` and `GEMINI.md` symlinked to the local `AGENTS.md`.
 - Place new files in the appropriate top-level subfolder (e.g., `assets/` for static assets, `scripts/` for tooling and automation, `src/` for sources, `tests/` for tests, `docs/` for documentation) instead of the project root. If the project has an established layout, follow it; otherwise use these defaults. Create a folder only when adding its first real file. Do not commit empty placeholders, `.keep` files, or scaffold directories.
 
 The test: every changed line traces directly to the user's request. If a line fails that test, revert it.
@@ -168,7 +168,7 @@ For significant misses, regressions, or repeated mistakes:
 
 - Review existing postmortems before touching related code.
 - Follow `postmortem/AGENTS.md` when creating or updating postmortems.
-- Follow `docs/agents.md` when creating or updating agent work artifacts such as feature plans, prompt notes, bugfix investigations, or execution summaries.
+- Follow `docs/AGENTS.md` when creating or updating agent work artifacts such as feature plans, prompt notes, bugfix investigations, or execution summaries.
 - Keep `README.md`, `AGENTS.md`, and `postmortem/README.md` aligned when workflow or structure changes.
 
 Boris Cherny (creator of Claude Code) keeps his team's file around 100 lines. Under 300 is a good ceiling. Over 500 and you are fighting your own config.
@@ -193,21 +193,21 @@ This repo is a **skill-development environment** for `skills/google-analytics-im
 - Run locally: not applicable.
 
 ### Layout
-- Project root: `/Users/juce/Documents/devs/google-analytics-skill/`.
+- Project root: `/Users/a.feygin/Documents/google-analytics-implementation-planner/`.
 - The skill: `skills/google-analytics-implementation-planner/` (entry point `SKILL.md`, Codex metadata in `agents/openai.yaml`, deep-dive docs in `references/`, output templates in `assets/`, test prompts in `evals/`).
-- Docs: `docs/agents.md` defines agent work artifact rules and doc-review criteria; agent artifacts live under `docs/agents/features/`, `docs/agents/prompts/`, `docs/agents/bugfixes/`, and `docs/agents/reviews/`; `postmortem/` contains the postmortem workflow.
+- Docs: `docs/AGENTS.md` defines agent work artifact rules and doc-review criteria; agent artifacts live under `docs/agents/features/`, `docs/agents/prompts/`, `docs/agents/bugfixes/`, and `docs/agents/reviews/`; `postmortem/` contains the postmortem workflow.
 - Top-level `README.md` documents the project's purpose and how to use the skill.
 
 ### Conventions
 - Reusable rules and design guidance belong at the highest applicable `AGENTS.md`; subfolder `AGENTS.md` files are for local constraints only.
 - Keep `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` aligned at the root and in subfolders; `CLAUDE.md` and `GEMINI.md` should point to the local `AGENTS.md`.
-- Agent work artifacts under `docs/agents/` use the `STATUS-summary.md` (or `STATUS-YYYY-MM-DD-summary.md`) naming defined in `docs/agents.md`. Subfolder `AGENTS.md` files cannot redefine this scheme.
+- Agent work artifacts under `docs/agents/` use the `STATUS-summary.md` (or `STATUS-YYYY-MM-DD-summary.md`) naming defined in `docs/AGENTS.md`. Subfolder `AGENTS.md` files cannot redefine this scheme.
 - Skill content follows the standard three-level progressive disclosure: YAML frontmatter (always loaded) → `SKILL.md` body (loaded on trigger, kept under ~500 lines) → `references/*.md` and `assets/*.md` (loaded by name on demand). Don't inline reference content into `SKILL.md`; don't create orphan reference files.
-- Every verifiable claim about GA4 / GTM / Measurement Protocol in a reference file must include a vendor doc URL. Mark each as CONFIRMED / REFUTED / PARTIAL / NOT-FOUND.
+- Every verifiable claim about GA4 / GTM / Measurement Protocol in a reference file must be backed by vendor docs. Use section-level source lists when a section is sourced as a unit, and inline URLs for disputed, surprising, or fast-changing claims. Mark sources CONFIRMED / REFUTED / PARTIAL / NOT-FOUND.
 
 ### Repo-specific constraints
 - The skill is GA4-deep, not vendor-agnostic. Don't add Segment / PostHog / Plausible / Amplitude content to this skill — they belong in separate skills.
-- The skill never produces a templated plan for child audiences (COPPA / EU under-16), health data (HIPAA), or regulated finance — it escalates. Reference docs may discuss these as escalation triggers only.
+- The skill never produces a templated plan for child audiences (COPPA / EU under-16), health data (HIPAA), or regulated finance — it escalates. Google Analytics does not offer a HIPAA BAA, so HIPAA-regulated PHI must not be exposed to GA. Reference docs may discuss these as escalation triggers only.
 - The two output artifacts (design plan, setup runbook) stay separate. Don't merge their templates.
 
 ### Git workflow
