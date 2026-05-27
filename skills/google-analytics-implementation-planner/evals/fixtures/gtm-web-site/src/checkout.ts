@@ -20,12 +20,15 @@ export async function subscribe(priceId: string) {
 
   const items: PurchaseItem[] = checkout.items;
   window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ ecommerce: null });
   window.dataLayer.push({
-    event: "ga4_ecommerce",
-    ga4_ecommerce_event_name: "purchase",
-    transaction_id: checkout.sessionId,
-    currency: "USD",
-    value: checkout.subtotal,
-    items
+    event: "purchase",
+    trigger: "ga4_ecommerce",
+    ecommerce: {
+      transaction_id: checkout.sessionId,
+      currency: "USD",
+      value: checkout.subtotal,
+      items
+    }
   });
 }

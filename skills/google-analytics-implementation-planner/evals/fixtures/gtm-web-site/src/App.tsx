@@ -16,36 +16,59 @@ function pushAnalyticsEvent(event: DataLayerEvent) {
 export function App() {
   function trackPage(logicalPage: string) {
     pushAnalyticsEvent({
-      event: "ga4_page_view",
-      logical_page: logicalPage,
-      feature_area: "marketing"
+      event: "userevent",
+      trigger: "userevent",
+      event_type: "pageview",
+      feature_name: "marketing",
+      screen_name: logicalPage,
+      userParams: {
+        page_name: logicalPage
+      }
     });
   }
 
   function signup(method: "password" | "google") {
     pushAnalyticsEvent({
-      event: "ga4_user_event",
-      ga4_event_name: "sign_up",
-      event_group: "auth",
-      method
+      event: "userevent",
+      trigger: "userevent",
+      event_type: "event",
+      event_name: "sign_up",
+      feature_name: "auth",
+      screen_name: "signup",
+      userParams: {
+        page_name: "signup"
+      },
+      eventParams: { method }
     });
   }
 
   function login(method: "password" | "sso") {
     pushAnalyticsEvent({
-      event: "ga4_user_event",
-      ga4_event_name: "login",
-      event_group: "auth",
-      method
+      event: "userevent",
+      trigger: "userevent",
+      event_type: "event",
+      event_name: "login",
+      feature_name: "auth",
+      screen_name: "login",
+      userParams: {
+        page_name: "login"
+      },
+      eventParams: { method }
     });
   }
 
   function contactSales() {
     pushAnalyticsEvent({
-      event: "ga4_user_event",
-      ga4_event_name: "generate_lead",
-      event_group: "lead",
-      lead_source: "pricing"
+      event: "userevent",
+      trigger: "userevent",
+      event_type: "event",
+      event_name: "generate_lead",
+      feature_name: "lead",
+      screen_name: "pricing",
+      userParams: {
+        page_name: "pricing"
+      },
+      eventParams: { lead_source: "pricing" }
     });
   }
 

@@ -59,44 +59,74 @@ Reserve dataLayer keys for app-owned semantics GA4/GTM cannot infer.
 window.dataLayer = window.dataLayer || [];
 
 window.dataLayer.push({
-  event: 'ga4_page_view',
-  logical_page: 'pricing',
-  feature_area: 'marketing'
+  event: 'userevent',
+  trigger: 'userevent',
+  event_type: 'pageview',
+  feature_name: 'marketing',
+  screen_name: 'pricing',
+  userParams: {
+    page_name: 'pricing',
+  }
 });
 
 window.dataLayer.push({
-  event: 'ga4_user_event',
-  ga4_event_name: 'sign_up',
-  event_group: 'auth',
-  logical_page: 'signup',
-  method: 'password',
-  plan_tier: 'team'
+  event: 'userevent',
+  trigger: 'userevent',
+  event_type: 'event',
+  event_name: 'sign_up',
+  feature_name: 'auth',
+  screen_name: 'signup',
+  userParams: {
+    page_name: 'signup'
+  },
+  eventParams: {
+    method: 'password',
+    plan_tier: 'team'
+  }
 });
 ```
 
 Container setup for normal analytics:
 
-| GTM trigger | GTM tag | GA4 event name | Params |
-| --- | --- | --- | --- |
-| Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; app-owned page params only if needed |
-| Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific dataLayer params not covered by GA4/GTM |
+| GTM trigger | Condition | GTM tag | GA4 event name | Params |
+| --- | --- | --- | --- | --- |
+| Custom Event `userevent` | `event_type = pageview` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; map `userParams.page_name` only if needed |
+| Custom Event `userevent` | `event_type = event` | GA4 Event `GA4 - User Event` | `{{DLV - event_name}}` | Explicit DLV mappings from the event catalog |
 
 Adding a normal event should update code, tests, and the taxonomy only.
-It should not require another GTM trigger or tag. GTM changes only when a
-new app-owned data layer variable is truly needed, when a parameter is
-retired, or when ecommerce is introduced.
+It should not require another GTM trigger or per-event tag. GTM changes
+only when a new app-owned data layer variable is truly needed, when a
+parameter is retired, or when ecommerce is introduced.
 
 If the page-view tag emits `page_view`, disable duplicate automatic
-page-view sends from the Google tag / Enhanced Measurement source of
-truth, especially for SPAs where route changes are manual.
+page-view sends: set Google tag `send_page_view = false`, keep only one
+Enhanced Measurement/pageview source of truth, and disable history-change
+automatic pageviews when SPA route changes are manually emitted.
+
+Do not treat `eventParams.*` or `userParams.*` as executable wildcard
+GTM mappings. GTM needs one Data Layer Variable per nested field
+(Version 2) and one GA4 parameter row per sent parameter, for example
+`eventParams.method` → GA4 parameter `method`.
 
 Ecommerce is separate. Use GA4 recommended ecommerce event names
-(`view_item`, `add_to_cart`, `purchase`, `refund`, etc.) and a dedicated
-Custom Event trigger/tag such as `ga4_ecommerce`; map `currency`, `value`,
-`transaction_id`, coupon/tax/shipping where applicable, and `items[]`.
-Every item needs `item_id` or `item_name`. Do not send ecommerce through
-the generic user-event tag unless the plan documents why the GTM container
-can still preserve GA4 ecommerce semantics.
+(`view_item`, `add_to_cart`, `purchase`, `refund`, etc.) as the
+dataLayer `event`, with `trigger: 'ga4_ecommerce'` and an `ecommerce`
+object. Clear stale ecommerce data first:
+
+```js
+window.dataLayer.push({ ecommerce: null });
+window.dataLayer.push({
+  event: 'purchase',
+  trigger: 'ga4_ecommerce',
+  ecommerce: { transaction_id, currency, value, items }
+});
+```
+
+Configure the GA4 ecommerce tag with Event Name `{{Event}}` and the
+Data Layer ecommerce object as the data source. Every item needs
+`item_id` or `item_name`. Do not send ecommerce through the generic
+user-event tag unless the plan documents why the GTM container can still
+preserve GA4 ecommerce semantics.
 
 Use Data Layer Variables and GTM's native Google tag / GA4 Event tags.
 Do not paste gtag.js sends into Custom HTML tags.

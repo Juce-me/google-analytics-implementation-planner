@@ -225,6 +225,7 @@ This repo is a **skill-development environment** for `skills/google-analytics-im
 When the user corrects your approach, append a one-line rule here before ending the session. Write it concretely ("Always use X for Y"), never abstractly ("be careful with Y"). If an existing line already covers the correction, tighten it instead of adding a new one. Remove lines when the underlying issue goes away (model upgrades, refactors, process changes).
 
 - GA4 custom definitions must reuse predefined dimensions/metrics first; never create bulk or boolean-presence dimensions such as `*_exists` or `has_*`.
+- GA4 skill schemas must use the canonical `trigger: "userevent"` envelope with `event_type`, GA4-native `event_name`, `feature_name`/`screen_name`, `userParams`, and `eventParams`; GTM dataLayer pushes also need `event: "userevent"`, while vendor sends use native mapped shapes; never add `event_group`, `ga4_event_name`, or internal-to-GA4 event-name rewrites.
 
 ---
 

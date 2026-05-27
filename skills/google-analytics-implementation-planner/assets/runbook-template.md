@@ -8,6 +8,8 @@ Author: <your-handle>
 > (sibling artifact). When something here changes (a click-path
 > screenshot, a new admin step), update this file — don't drift the
 > plan.
+> This runbook owns GA4/GTM/Firebase/MP configuration only. Code
+> implementation order and decision rationale stay in the design plan.
 
 ## Revision history
 
@@ -29,8 +31,7 @@ Author: <your-handle>
 Admin (gear icon, bottom left) → Property column.
 
 1. **Property → Property Details:** name, timezone, currency. (Currency
-   here defines the report-level conversion target — set even if you
-   don't have ecommerce.)
+   here defines report currency — set even if you don't have ecommerce.)
 2. **Data Streams → Web**:
    - Stream name, URL, stream id.
    - Enhanced Measurement → toggle: keep ON for `scroll`, `outbound
@@ -71,17 +72,17 @@ requires the explicit justification from plan §6.
 Custom dimensions tab → Create custom dimension. Paste rows from
 plan §6:
 
-| Display name | Parameter/User property | Scope | Event group(s) | GA4 predefined alternative checked | Description | Decision/use |
+| Display name | Parameter/User property | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- |
 | Plan tier | `plan_tier` | User | auth, funnel | none | Subscription tier at event time | D1, D3 |
-| Feature area | `feature_area` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
+| Feature name | `feature_name` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
 | Search location | `search_location` | Event | search | Search term is not enough | UI surface that initiated search | D2 |
 | Experiment variant | `experiment_variant` | User | all | none | A/B test cell | D4 |
 | ... | ... | ... | ... | ... | ... | ... |
 
 Custom metrics tab → Create custom metric. Specify **unit** correctly:
 
-| Display name | Parameter | Scope | Event group(s) | GA4 predefined alternative checked | Description | Unit of measurement | Decision/use |
+| Display name | Parameter | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Unit of measurement | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Latency | `latency_ms` | Event | system | no equivalent for app-specific timing | Server response time | Milliseconds | D5 |
 | ... | ... | ... | ... | ... | ... | ... | ... |
@@ -188,24 +189,36 @@ GTM admin → Workspace.
 2. Confirm the approved dataLayer contract uses `dataLayer.push({...})`,
    not `dataLayer(...)`, and that GTM web is intentionally selected.
 3. Tags → New → Google tag for base configuration.
-4. Create exactly two normal analytics triggers/tags:
+4. Create two filtered normal analytics Custom Event triggers and two
+   reusable GA4 Event tags. Both triggers match dataLayer event name
+   `userevent`; the filter chooses the pageview or user-event path.
 
-   | Trigger | Tag | Event name | Data layer variables to map |
-   | --- | --- | --- | --- |
-   | Custom Event `ga4_page_view` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; only app-owned page params if needed |
-   | Custom Event `ga4_user_event` | GA4 Event `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific params not covered by GA4/GTM |
+   | Trigger | Condition | Tag | Event name | Data layer variables to map |
+   | --- | --- | --- | --- | --- |
+   | Custom Event `userevent` | `event_type` equals `pageview` | GA4 Event `GA4 - Page View` | `page_view` | GTM built-ins first; `userParams.page_name` only if a logical page name is needed |
+   | Custom Event `userevent` | `event_type` equals `event` | GA4 Event `GA4 - User Event` | `{{DLV - event_name}}` | Explicit DLV mappings from the table below |
 
    Adding a new normal event updates the app taxonomy/tests and the
-   `ga4_user_event` payload only; it does not create another GTM trigger
-   or tag.
-   If this tag sends `page_view`, disable duplicate automatic page-view
-   sends from the Google tag / Enhanced Measurement source of truth,
-   especially for SPA route changes.
+   `userevent` payload only; it does not create another GTM trigger or
+   per-event tag.
+   When manual `userevent` pageviews are selected, set the Google tag
+   configuration parameter `send_page_view` to `false` everywhere the
+   base tag loads, and disable duplicate Enhanced Measurement or
+   history-change pageviews for SPA route changes that the app emits.
 5. If ecommerce is active, configure it separately:
 
-   | Trigger | Tag | Event name | Required variables |
+   ```js
+   window.dataLayer.push({ ecommerce: null });
+   window.dataLayer.push({
+     event: 'purchase',
+     trigger: 'ga4_ecommerce',
+     ecommerce: { transaction_id, currency, value, items }
+   });
+   ```
+
+   | Trigger | Tag | Event name | Ecommerce data source |
    | --- | --- | --- | --- |
-   | Custom Event `ga4_ecommerce` | GA4 Event `GA4 - Ecommerce` | `{{DLV - ga4_ecommerce_event_name}}` | `currency`, `value`, `transaction_id` where applicable, `items[]` with `item_id` or `item_name` |
+   | Custom Event matching approved ecommerce names (`purchase`, `refund`, etc.) | GA4 Event `GA4 - Ecommerce` | `{{Event}}` | Data Layer `ecommerce` object |
 
    Map GA4 ecommerce fields from the data layer and validate `purchase`,
    `refund`, and cart events against the ecommerce section of the plan.
@@ -215,12 +228,26 @@ GTM admin → Workspace.
 7. Variables → enable built-ins first (Page URL, Page Path, Referrer,
    Click ID, Click URL, click classes/text, scroll/form/error variables
    as needed). Create Data Layer Variables only for app-owned params that
-   GA4/GTM does not already provide, such as `logical_page`,
-   `feature_area`, `ga4_event_name`, and event-specific business fields.
-   Do not create variables for page, device, geo, campaign, traffic, or
-   click fields that built-ins already cover.
+   GA4/GTM does not already provide. There is no wildcard mapping:
+   create one Data Layer Variable per nested field and one GA4 parameter
+   row per parameter.
+
+   | GTM variable | Data Layer Variable Name | Version | GA4 parameter | Tag(s) |
+   | --- | --- | --- | --- | --- |
+   | `DLV - event_type` | `event_type` | 2 | filter only | triggers |
+   | `DLV - event_name` | `event_name` | 2 | event name source | `GA4 - User Event` |
+   | `DLV - feature_name` | `feature_name` | 2 | `feature_name` | `GA4 - User Event` when registered |
+   | `DLV - screen_name` | `screen_name` | 2 | `screen_name` | page/user tags when needed |
+   | `DLV - userParams.page_name` | `userParams.page_name` | 2 | `page_name` | page/user tags when registered |
+   | `DLV - eventParams.<param>` | `eventParams.<param>` | 2 | `<param>` | tags listed in the event catalog |
+
+   Do not create variables for page URL/path/title/referrer, device, geo,
+   campaign, traffic, or click fields that built-ins already cover. If a
+   non-GTM sender uses `userParams.page_location`, it must be a full
+   canonical sanitized URL, not a relative path.
 8. Preview before publishing. Confirm normal page/user events fire only
-   the two normal triggers/tags; ecommerce fires only its dedicated path.
+   the approved `userevent` trigger/tag paths; ecommerce fires only its
+   dedicated ecommerce path and uses the `ecommerce` object.
    Publish only after Tag Assistant green
    for every test path.
 9. Lock prod container — only the analytics lead has publish rights.
@@ -312,7 +339,7 @@ Admin → Property → **BigQuery Links** → Link.
 ## 10. Ongoing operations
 
 - **Drift check in CI** — `scripts/check_analytics.ts` compares code
-  event names to plan §5 catalog. Fails CI on drift.
+  event envelopes to plan §5 catalog. Fails CI on drift.
 - **Quarterly review** — re-read plan §1 decisions. Have they changed?
   Cut events that no longer serve a decision.
 - **Pepper rotation** — quarterly cadence. Backfill stored hashes

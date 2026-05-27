@@ -18,6 +18,10 @@ Author: <your-handle>
 Two paragraphs max. What we'll track, why, what we'll deliberately not
 track. The reader who reads only this should know whether to read on.
 
+**Artifact boundary:** this plan owns decisions, event taxonomy, code
+anchors, and implementation order. GA4 Admin, GTM, Firebase, Measurement
+Protocol, and sGTM configuration click-paths live in the setup runbook.
+
 ## 1. Goal & decisions
 
 What product/business decisions will this data drive? List 3–7. Each
@@ -62,33 +66,48 @@ consider `https://region1.google-analytics.com/mp/collect?...`.>
 
 ### GTM web dataLayer contract (if selected)
 
-Normal web analytics uses only two Custom Event triggers/tags:
+Normal web analytics uses one dataLayer event name, `userevent`, with two
+filtered reusable GTM trigger/tag paths. GTM fires on the top-level
+`event` key; keep `trigger` as canonical audit metadata. Do not create a
+new GTM trigger or tag per product event.
 
-| Trigger event | GTM tag | GA4 event name | Data layer variables |
+| dataLayer event | Filter | GA4 event name | Data layer variables |
 | --- | --- | --- | --- |
-| `ga4_page_view` | `GA4 - Page View` | `page_view` | GTM built-ins first; only app-owned page params if needed |
-| `ga4_user_event` | `GA4 - User Event` | `{{DLV - ga4_event_name}}` | Event-specific params not covered by GA4/GTM |
+| `userevent` | `event_type = pageview` | `page_view` | GTM built-ins first; map `userParams.page_name` only if a logical page name is needed |
+| `userevent` | `event_type = event` | `{{DLV - event_name}}` | Explicitly mapped `eventParams.<key>` plus approved context fields |
 
 Normal event example:
 
 ```js
 window.dataLayer.push({
-  event: 'ga4_user_event',
-  ga4_event_name: 'sign_up',
-  event_group: 'auth',
-  method: 'password'
+  event: 'userevent',
+  trigger: 'userevent',
+  event_type: 'event',
+  event_name: 'sign_up',
+  feature_name: 'auth',
+  screen_name: 'signup',
+  userParams: {
+    page_name: 'signup'
+  },
+  eventParams: {
+    method: 'password'
+  }
 });
 ```
 
 New normal events update code, tests, and §5 only; they do not create new
-GTM tags/triggers. Ecommerce, if active, uses a separate `ga4_ecommerce`
-trigger/tag with GA4 ecommerce fields and `items[]`. If the page-view
-tag emits `page_view`, disable duplicate automatic/enhanced page-view
-sends.
+GTM triggers or per-event tags. Ecommerce, if active, uses approved GA4
+ecommerce dataLayer events such as `purchase` with
+`trigger: 'ga4_ecommerce'` and an `ecommerce` object containing
+`items[]`. If the page-view tag emits `page_view`, disable duplicate
+automatic/enhanced page-view sends and set `send_page_view = false`.
 
 Do not invent dataLayer or GA4 params for page URL/path/referrer, device,
 geo, campaign, traffic source, or click fields when GTM Built-In
 Variables or GA4 predefined dimensions/metrics already support them.
+For GTM, derive `page_location` and `page_title` from built-ins by
+default; map `userParams.page_location` only when it is a full canonical
+sanitized URL that the built-in cannot provide.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
@@ -103,15 +122,17 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
 - [ ] Fail silent for users.
 - [ ] Logs contain no event params.
 
-## 3. Schema
+## 3. Canonical event envelope
 
-### Internal event shape
+### Internal shape
 
 ```
 {
-  name:             string,    // snake_case, max 40
-  event_group:      enum,      // auth | content | search | funnel | system
-  logical_page:     string?,   // home | dashboard | settings | ...
+  trigger:          "userevent",
+  event_type:       "pageview" | "event",
+  event_name:       string?,   // required when event_type = "event"; already the GA4 name
+  feature_name:     string?,   // auth | search | billing | admin | ...
+  screen_name:      string?,   // signup | dashboard | settings | ...
   ids: {
     client_id:      string,    // web id from gtag('get') (or minted server id)
     app_instance_id:string?,   // app id from Firebase SDK, app streams only
@@ -124,16 +145,23 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
     ad_personalization:'granted' | 'denied',
     ad_storage:        'granted' | 'denied',
   },
-  params:           Record<string, string | number | boolean | null>,
+  userParams: {
+    page_name?:     string,
+    page_location?: string,    // full sanitized URL when not using GTM built-ins
+    page_title?:    string,    // app-owned title only when built-in is insufficient
+    screen_name?:   string,
+  },
+  eventParams:      Record<string, string | number | boolean | null>,
   server_timestamp: number,
 }
 ```
 
 Do not send or document Universal Analytics-style
 `event_category`, `event_action`, or `event_label`. GA4 events use
-`event_name` plus specific event parameters. `event_group` is a planning
-taxonomy field unless the plan explicitly chooses a reportable
-group-specific parameter.
+`event_name` plus specific event parameters. `event_name` is already the
+GA4 event name; do not create a separate internal name and derive the
+GA4 name later. Use `feature_name` or `screen_name` for grouping, never
+`event_group`.
 
 Represent missing values as `null` in the internal contract/tests and
 omit null params from the GA4 payload. Do not create boolean presence
@@ -141,12 +169,15 @@ dimensions such as `geo_exists` or `has_referrer`; use meaningful params
 like `geo: null` / `geo: "DE"` or `referrer_domain: null` /
 `referrer_domain: "example.com"`.
 
-### GA4 event_name derivation
+### GA4 event_name selection
 
-`event_name` = first match in:
+Pick `event_name` once in the taxonomy:
 1. The recommended GA4 name if one applies (`sign_up`, `login`,
    `search`, `select_content`, `view_item`, `share`, …).
-2. A documented custom name from §5 catalog.
+2. A documented custom GA4-safe name from §5 catalog.
+
+For `event_type: "pageview"`, the GA4 event name is `page_view` and
+page/screen context comes from `userParams`.
 
 ## 4. Identity & sessions
 
@@ -165,12 +196,12 @@ like `geo: null` / `geo: "DE"` or `referrer_domain: null` /
 
 The contract. Every row must trace to a decision in §1.
 
-| Event name | Event group | Required params | Optional/group params | Trigger | File/line anchor | Server/browser side | Decision/use |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `sign_up` | auth | `method` | `plan_tier` | Successful account creation | `src/auth/signup.ts:42` | browser | D1 |
-| `login` | auth | `method` | `login_result` | Successful login | `src/auth/login.ts:88` | browser | D1 |
-| `search` | search | `search_term` (allowlisted/bucketed; no raw free text) | `search_location`, `result_count_bucket` | Search submitted | `src/search/handler.ts:17` | browser | D2 |
-| ... | | | | | | | |
+| Trigger | Event type | Event name | Feature/screen | userParams | eventParams | File/line anchor | Server/browser side | Decision/use |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
+| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
+| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
+| ... | | | | | | | | |
 
 Every parameter listed here must be passed; nothing else is. The
 catalog is closed: if a feature needs a new event, the catalog gets a
@@ -185,16 +216,16 @@ definitions only when the named decision cannot be answered from built-ins
 or recommended-event parameters. A first-pass plan with more than 10
 custom definitions needs an explicit justification.
 
-| Display name | Parameter/User property | Scope | Event group(s) | GA4 predefined alternative checked | Description | Decision/use |
+| Display name | Parameter/User property | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- |
 | Plan tier | `plan_tier` | User | auth, funnel | none | Subscription tier at event time | D1, D3 |
-| Feature area | `feature_area` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
+| Feature name | `feature_name` | Event | content, system | Page path/screen name is too broad | Top-level product area | D1 |
 | Search location | `search_location` | Event | search | Search term is not enough | UI surface that initiated search | D2 |
 | Experiment variant | `experiment_variant` | User | all | none | A/B test cell | D4 |
 
 ### Custom metrics
 
-| Display name | Parameter | Scope | Event group(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
+| Display name | Parameter | Scope | Feature/screen context(s) | GA4 predefined alternative checked | Description | Unit | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Latency | `latency_ms` | Event | system | no equivalent for app-specific timing | Server response time | ms | D5 |
 
@@ -248,24 +279,27 @@ Create or update `docs/README_ANALYTICS.md` with:
 - The event taxonomy from §5.
 - Required param types and allowed values.
 - The allowlist for state-changing surfaces with no event.
-- The future-feature rule: event name, event group, typed params,
+- The future-feature rule: `trigger`, `event_type`, `event_name` where
+  applicable, `feature_name` or `screen_name`, typed params,
   predefined-dimension check for new custom definitions, tests, taxonomy
   row, and vendor/runbook updates in the same PR.
 - Links to the setup runbook and privacy/deletion flow.
 
 Add or update the target repo `AGENTS.md` rule:
 
-> User-visible feature changes must include analytics impact: event name,
-> event group, typed params, tests, taxonomy doc update, predefined-
+> User-visible feature changes must include analytics impact: `trigger`,
+> `event_type`, `event_name` where applicable, `feature_name` or
+> `screen_name`, typed params, tests, taxonomy doc update, predefined-
 > dimension check for any new custom definition, and any required
 > vendor/runbook updates. Do not add bulk custom dimensions or boolean
-> presence dimensions like `*_exists` / `has_*`. If no event is needed,
-> update the analytics allowlist with a reason.
+> presence dimensions like `*_exists` / `has_*`, and do not use
+> `event_group`. If no event is needed, update the analytics allowlist
+> with a reason.
 
 CI drift checks:
 
 - [ ] Every state-changing route emits analytics or is allowlisted.
-- [ ] Code event names match the taxonomy.
+- [ ] Code event envelopes match the taxonomy.
 - [ ] Required params have tests.
 - [ ] Captured payloads pass forbidden-key and forbidden-value sweeps.
 
@@ -273,7 +307,8 @@ CI drift checks:
 
 One commit per step. The implementer follows this list top to bottom.
 
-1. Add typed wrapper + scrubber + consent gate. Tests.
+1. Add typed `userevent` envelope wrapper + scrubber + consent gate.
+   Tests.
 2. Wire Consent Mode v2 defaults snippet in HTML.
 3. Add custom dimensions / metrics / key events in GA4 Admin (per
    runbook).
@@ -296,6 +331,16 @@ One commit per step. The implementer follows this list top to bottom.
       calls; advanced mode sends only approved cookieless pings.
 - [ ] Minor / age-unclassified test: zero analytics sends.
 - [ ] Exact event assertions for each critical event.
+- [ ] Internal contract and GTM dataLayer assertions check
+      `event: "userevent"` where GTM is used, plus
+      `trigger: "userevent"` and `event_type: "pageview" | "event"`.
+- [ ] `event_name` is the GA4 event name with no rewrite table.
+- [ ] No `event_group` or `ga4_event_name` field appears in captured
+      payloads.
+- [ ] Page/screen context is under `userParams` with GA4/GTM-compatible
+      keys.
+- [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK, MP,
+      or sGTM) and do not leak internal-only fields.
 - [ ] Exactly-one-event test for each funnel step (no double-fire).
 - [ ] Network-failure test: queue overflows, UX unaffected, drop
       counter increments.

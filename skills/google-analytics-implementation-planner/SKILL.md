@@ -12,7 +12,8 @@ description: >
   Segment, PostHog, Plausible, or similar tools so you can confirm vendor
   scope, but do not produce non-GA4 implementation plans from this skill.
   Produces a privacy-first, codebase-anchored GA4 instrumentation design
-  plan plus a separate setup runbook — never a generic event list.
+  plan, separate setup runbook, durable analytics contract, and future
+  feature rule — never a generic event list.
 ---
 
 # Google Analytics Implementation Planner
@@ -24,9 +25,9 @@ do NOT write generic "track button clicks" lists. Every plan is grounded in
 (c) the real codebase (file:line anchors), and (d) the live GA4 / GTM /
 Measurement Protocol docs.
 
-This skill is dual-output by design: a **design plan** (the *why*) and a
-**setup runbook** (the *how*). They never live in the same file — they
-drift if you merge them.
+This skill separates decisions, configuration, and post-launch rules:
+**design plan** (why + implementation order), **setup runbook** (how),
+and **durable analytics contract** (future feature work).
 
 ## Scope guard
 
@@ -149,28 +150,32 @@ docs and cite sources for every claim about:
 Mark claims CONFIRMED / REFUTED / PARTIAL / NOT-FOUND. If a claim cannot
 be verified, do not use it as a requirement.
 
-### 1.4. Design the schema
+### 1.4. Design the event envelope
 
-Define a normalized internal event shape:
+Define one canonical event envelope before any GA4/GTM mapping:
+`trigger: "userevent"`, `event_type: "pageview" | "event"`,
+GA4-native `event_name`, `feature_name` or `screen_name`, `ids`,
+`consent`, `userParams`, `eventParams`, and `server_timestamp`. Never
+maintain a product/internal event name and rewrite it to GA4 later.
 
-```
-{ name, event_group, logical_page, ids, consent, params, server_timestamp }
-```
+For `event_type: "event"`, `event_name` is the final GA4 event name:
+choose a GA4 recommended name where one exists, otherwise document one
+custom GA4-safe name. For `event_type: "pageview"`, GA4 receives
+`page_view`; page/screen context lives in `userParams`.
 
-Then define how the GA4 `event_name` is derived — prefer GA4's
-recommended-event names where they exist (`sign_up`, `login`, `search`,
-`select_content`, `share`, `view_item`, `purchase`, `refund`, etc.) so
-GA4's built-in reports populate. Before adding a parameter, dataLayer variable,
-or custom definition, reuse GA4/GTM built-ins: automatic events, recommended params, predefined dimensions/metrics, and GTM Built-In Variables.
-Do **not** model Universal Analytics fields (`event_category`,
-`event_action`, `event_label`) in GA4 plans, templates, wrappers, or
-future-feature rules. Add only low-cardinality, group-specific
-parameters such as `feature_area`, `signup_method`, `funnel_step`,
-`content_type`, `error_class`, or `search_location`, then register only
-the ones needed for reports as custom dimensions/metrics. `event_group`
-is a planning/taxonomy field, not a default GA4 parameter to log. The
-reserved and recommended event tables live in
+Use `feature_name` or `screen_name` for product/surface grouping; do not
+use `event_group`. Keep page/user context in `userParams` by default
+(`page_name`, `page_location`, `page_title`, `screen_name`), but when
+using GTM, map GA4 page fields from GTM Built-In Variables unless the
+plan proves an app-owned value is required. Keep action-specific payload
+in `eventParams`. Full shape and validation rules live in
 [references/ga4-event-schema.md](references/ga4-event-schema.md).
+
+Before adding a parameter, dataLayer variable, or custom definition,
+reuse GA4/GTM built-ins. Do **not** model Universal Analytics fields
+(`event_category`, `event_action`, `event_label`). Add only
+low-cardinality, context-specific parameters, then register only the ones
+needed for reports.
 
 ### 1.5. Identity & sessions
 
@@ -198,7 +203,8 @@ The common patterns and when each is right:
   and SDK consent controls. Measurement Protocol should augment this path,
   not replace it.
 - **GTM web container** — use only when needed. Normal web analytics uses
-  `references/gtm-and-tagging.md`'s two-trigger/two-tag contract; ecommerce stays separate.
+  one `userevent` dataLayer event name with two filtered reusable
+  trigger/tag paths; ecommerce stays separate.
 - **Measurement Protocol augmentation** — sends server/offline events
   into an existing web/app stream, can recover critical events ad
   blockers drop, and can enrich with server-only truth. It requires the
@@ -215,9 +221,10 @@ for named server/offline events. Distinguish
 custom sGTM clients. Name the exact endpoint/path and payload shape:
 
 - `gtag('event', name, params)` for browser sends
-- `dataLayer.push({ event: 'ga4_page_view', ... })` and
-  `dataLayer.push({ event: 'ga4_user_event', ga4_event_name, ... })`
-  for normal GTM web sends
+- `dataLayer.push({ event: 'userevent', trigger: 'userevent',
+  event_type: 'pageview' | 'event', event_name, userParams,
+  eventParams })` for normal GTM web sends. GTM fires on top-level
+  `event`; `trigger` stays in the canonical contract for audit/tests.
 - Firebase Analytics SDK `logEvent` / `setUserID` / `setConsent` for
   iOS/Android app sends
 - `https://www.google-analytics.com/mp/collect?...` with JSON payload for
@@ -280,10 +287,10 @@ high-cardinality ids that blow up GA4's cardinality limits and produce
 "(other)" rows), the scope (event vs user), and stay under GA4's caps.
 Start with GA4 predefined dimensions/metrics and recommended-event
 parameters; create custom definitions only for decision-backed questions
-that GA4 cannot already answer. For each event group, list the
-group-specific parameters that may need registration. Do not create a
+that GA4 cannot already answer. For each feature/screen context, list the
+context-specific parameters that may need registration. Do not create a
 generic category/action/label replacement; create specific dimensions that
-answer the decision for that group. Do not bulk-create dimensions from all
+answer the decision for that context. Do not bulk-create dimensions from all
 available params; >10 custom definitions in a first-pass plan needs an
 explicit justification.
 The current caps and decision rules live in
@@ -315,20 +322,30 @@ correction in a revision header. Cover:
   URL, language, latency, error class, request id.)
 - **(d) Codebase fit** — do the `file:line` anchors actually exist? Do
   proposed patterns match existing project conventions, deps, lint rules?
-  If GTM web is used, confirm no normal event requires a new GTM tag or
-  trigger beyond the approved page-view and user-event pair.
+  If GTM web is used, confirm no normal event requires a per-event GTM
+  tag or trigger beyond the approved `userevent` filtered trigger/tag
+  paths.
 
 Fix every finding before finalizing. Note the corrections in a revision
 header.
 
-### 1.11. Split design from runbook
+### 1.11. Split decisions, implementation, and configuration
 
-The **plan** documents the WHY (decisions, schema, rationale, anchors).
-The **runbook** documents the HOW (GA4 admin click-paths, GTM container
-config, Measurement Protocol curl examples, registration tables, exact
-values to paste). Each owns its content — no duplication, or they drift.
-Templates live in [assets/plan-template.md](assets/plan-template.md) and
-[assets/runbook-template.md](assets/runbook-template.md).
+Keep the artifacts separate:
+
+- **Design plan:** decisions, architecture rationale, event envelope,
+  event catalog, codebase anchors, and implementation order. Keep
+  implementation rationale here because agents need to see why a code
+  change exists.
+- **Setup runbook:** GA4 Admin, GTM, Measurement Protocol, Firebase, and
+  sGTM configuration instructions with exact values to paste. Do not
+  duplicate the rationale.
+- **Durable analytics contract:** the post-launch source of truth for
+  future feature work.
+
+Templates live in [assets/plan-template.md](assets/plan-template.md),
+[assets/runbook-template.md](assets/runbook-template.md), and
+[assets/analytics-contract-template.md](assets/analytics-contract-template.md).
 
 ### 1.12. Make it durable (instrumentation contract)
 
@@ -338,16 +355,18 @@ It is the durable product contract after launch. It must explain how every
 future user-visible feature gets measured.
 
 Add a target-repo `AGENTS.md` rule: every user-visible feature change must
-include analytics impact: event name, event group, typed params, tests,
+include analytics impact: `trigger`, `event_type`, `event_name` where
+applicable, `feature_name` or `screen_name`, typed params, tests,
 taxonomy doc update, predefined-dimension check for any new custom
 definition, and vendor/runbook updates when relevant. The rule must ban
 bulk custom-dimension creation and boolean presence dimensions such as
-`*_exists` / `has_*`.
+`*_exists` / `has_*`, and it must ban `event_group` as the taxonomy
+field.
 
 Enforce by CI drift checks:
 
 - every state-changing route emits an event or appears in an allowlist
-- code event names match the taxonomy exactly
+- code event envelopes match the taxonomy exactly
 - required event params have tests
 - forbidden-keys regex sweep on captured payloads in CI
 
@@ -363,6 +382,16 @@ checkbox the implementer ticks:
 - [ ] Consent denied → zero third-party analytics sends
 - [ ] Minor / age-unclassified user → zero analytics sends
 - [ ] Exact event assertions for each critical event and required param
+- [ ] Internal contract and GTM dataLayer payloads use
+      `event: "userevent"` where GTM is used, plus
+      `trigger: "userevent"` and `event_type: "pageview" | "event"`
+- [ ] `event_name` is already the GA4 event name; no internal-to-GA4
+      rewrite table exists
+- [ ] No `event_group` or `ga4_event_name` field appears in new payloads
+- [ ] Page/screen context is grouped in `userParams` with
+      GA4/GTM-compatible keys
+- [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK, MP,
+      or sGTM) and do not leak internal-only fields.
 - [ ] Exactly-one-event assertions on critical funnels (no double-fire)
 - [ ] Network failure → UX still works (fail silent)
 - [ ] `user_id` stitches across anonymous → authenticated session
@@ -372,31 +401,19 @@ checkbox the implementer ticks:
 
 ## 2. Output
 
-Produce **two artifacts**, separately, in the project's existing docs tree
-(`docs/agents/features/PLANNED-ga4-instrumentation.md` plus a sibling
-`runbook` artifact, following `docs/AGENTS.md` naming if that file
-exists). Use the templates:
+Produce the design plan and setup runbook separately in the project's
+existing docs tree (`docs/agents/features/PLANNED-ga4-instrumentation.md`
+plus a sibling `runbook` artifact, following `docs/AGENTS.md` if it
+exists), then create/update `docs/README_ANALYTICS.md` and the target
+repo `AGENTS.md` analytics-impact rule.
 
-- **Design plan** (the why): `assets/plan-template.md`
-  Includes: goal & decisions, schema, identity, architecture, consent/legal,
-  full event catalog (table: event name | event group | required params |
-  optional/group params | trigger | file/line anchor | server/browser side |
-  decision/use), reporting-config intent, codebase `file:line` anchor
-  table, implementation order (one commit per step), verification checklist,
-  risks/open questions, deliverables.
-
-- **Setup runbook** (the how): `assets/runbook-template.md`
-  Includes: GA4 property creation steps, data stream setup, GTM container
-  config, exact server-side endpoint/path and payload shape (if
-  applicable), custom-definition registration table, Consent Mode v2
-  config, debug & validation steps.
-
-Also create or update:
-
-- **Durable analytics contract:** `docs/README_ANALYTICS.md`, from
-  `assets/analytics-contract-template.md`.
-- **Agent rule:** target repo `AGENTS.md`, requiring future feature work
-  to update analytics taxonomy, tests, and vendor/runbook docs.
+- **Design plan:** use `assets/plan-template.md` for the why,
+  architecture, event catalog, code anchors, implementation order,
+  verification, risks, and deliverables.
+- **Setup runbook:** use `assets/runbook-template.md` for GA4 Admin,
+  GTM/Firebase/MP/sGTM configuration, custom definitions, consent setup,
+  debug, validation, operations, and rollback.
+- **Durable contract:** use `assets/analytics-contract-template.md`.
 
 Keep a **revision header** at the top of each: what changed between
 passes. Plans that don't track their own revisions get re-litigated.
@@ -407,26 +424,17 @@ to that plan, not a replacement for it.
 
 ## 3. Anti-patterns (reject these)
 
-- A flat list of events with no decision behind them.
-- Generic `snake_case` names that ignore GA4's recommended names — losing
-  the built-in funnel, retention, and monetization reports.
-- Universal Analytics-style `event_category`, `event_action`, or
-  `event_label` parameters. GA4 plans use event names plus specific event
-  parameters/custom definitions.
-- A "register everything" custom-dimension table, especially one that
-  approaches GA4's 50 event-scoped dimension cap without proving each
-  dimension beats a predefined GA4 dimension/metric.
-- Boolean presence flags like `geo_exists`, `has_referrer`, or
-  `search_has_results`. Represent missing data as null/omitted in the
-  contract and use meaningful values such as `geo`, `referrer_domain`, or
-  `result_count_bucket`.
+- Events without decisions; plans without source anchors; claims without
+  vendor citations.
+- Product/internal event names rewritten to GA4 later. Pick GA4
+  `event_name` once.
+- `event_group`, `ga4_event_name`, or Universal Analytics-style
+  `event_category`, `event_action`, `event_label`.
+- Generic custom-dimension tables, boolean presence flags (`*_exists`,
+  `has_*`), high-cardinality ids, or predefined GA4/GTM duplicates.
 - Free-text, URLs, or tokens in event parameters.
 - Synthetic `currency: "USD"` + `value: 0` on non-revenue events. Pollutes
   Monetization reports forever; GA4 won't let you "untag" historical data.
-- Plan written without reading the source; `file:line` anchors that don't
-  exist or point to the wrong line.
-- "Trust me, GA4 does X" with no doc citation. Vendor behavior changes —
-  always link.
 - Heavy infra (sGTM + BigQuery + Looker) proposed without naming the
   lighter alternative and the cost delta.
 - Vague sGTM "transformations" that are not executable client/tag config,
@@ -459,36 +467,27 @@ Stop and ask the user before producing a plan if any are true:
 
 ## 5. Reference files
 
-Read these only when the relevant step needs the detail — they exist so
-this SKILL.md stays under 500 lines and the always-loaded context stays
-clean.
+Read only the relevant detail:
 
 - [references/ga4-event-schema.md](references/ga4-event-schema.md) —
-  reserved & recommended event names, parameter caps, naming rules, the
-  validation script's checklist.
+  event envelope, reserved/recommended names, caps, naming, validation.
 - [references/ga4-server-side.md](references/ga4-server-side.md) —
-  Measurement Protocol payload shape, `client_id` / `session_id` minting,
-  retry & queue patterns, debug endpoint.
-- [references/gtm-and-tagging.md](references/gtm-and-tagging.md) — when
-  to use GTM web vs server-side GTM vs neither; container hygiene; tag
-  sequencing.
+  Measurement Protocol shape, ids/sessions, retries, debug endpoint.
+- [references/gtm-and-tagging.md](references/gtm-and-tagging.md) —
+  GTM/sGTM choice, dataLayer contract, hygiene, tag sequencing.
 - [references/privacy-consent.md](references/privacy-consent.md) —
-  Consent Mode v2, GDPR floor, COPPA disable, forbidden-keys starter list,
-  scrubbing patterns, deletion pipeline.
+  Consent Mode v2, GDPR/COPPA floor, forbidden keys, deletion.
 - [references/identity-sessions.md](references/identity-sessions.md) —
-  hashing + peppering, anonymous-to-authenticated stitching, session
-  semantics in client vs server contexts.
+  hashing + peppering, stitching, session semantics.
 - [references/reporting-config.md](references/reporting-config.md) —
-  dimensions vs metrics decision rule, GA4 custom-definition caps,
-  cardinality traps, scope choice (event vs user).
+  dimensions vs metrics, caps, cardinality, scopes.
 - [references/surface-checklist.md](references/surface-checklist.md) —
-  the full trackable-surface inventory, for step 1.2.
+  full trackable-surface inventory.
 
 ## 6. Output templates
 
-- [assets/plan-template.md](assets/plan-template.md) — the design plan
-  skeleton with revision header, every required section, and prompts that
-  fail loudly if you skip a step.
+- [assets/plan-template.md](assets/plan-template.md) — design plan
+  skeleton.
 - [assets/runbook-template.md](assets/runbook-template.md) — the GA4 +
   GTM setup runbook skeleton with click-path placeholders and validation
   steps.
