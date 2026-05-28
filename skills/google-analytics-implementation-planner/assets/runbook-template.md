@@ -252,6 +252,26 @@ GTM admin → Workspace.
    for every test path.
 9. Lock prod container — only the analytics lead has publish rights.
 
+## 6a. MCP automation handoff
+
+If using the custom GA/GTM MCP, do not manually configure GTM from this
+section unless the MCP is unavailable.
+
+1. Generate the MCP execution spec from the approved plan/runbook.
+2. Run MCP in dry-run mode.
+3. Review the diff.
+4. Check GTM workspace capacity before creating a new workspace.
+5. Apply only to a new GTM workspace.
+6. Validate in Tag Assistant / DebugView.
+7. Create a container version only after explicit approval.
+8. Publish only after separate explicit approval.
+
+No secrets should be stored in the MCP spec. Measurement Protocol secrets
+must be handled only through the operator's secure secret channel.
+Destructive changes stay disabled unless separately approved. Consent
+settings must not be modified unless explicitly approved in the design
+plan.
+
 ## 7. (If using sGTM) server-side container
 
 1. Create server container in GTM.

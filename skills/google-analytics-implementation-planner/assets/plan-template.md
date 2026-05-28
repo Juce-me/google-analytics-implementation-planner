@@ -303,7 +303,28 @@ CI drift checks:
 - [ ] Required params have tests.
 - [ ] Captured payloads pass forbidden-key and forbidden-value sweeps.
 
-## 10. Implementation order
+## 10. MCP automation handoff, if requested
+
+- MCP execution requested: <yes/no>.
+- Expected execution spec path:
+  `docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml`.
+- Execution mode: `dry_run` by default.
+- Publish allowed: `false` by default.
+- Container version creation allowed: `false` by default.
+- Manual values still required:
+  - GA4 property id
+  - Stream id
+  - Measurement id
+  - GTM account id
+  - GTM container id
+  - Server container id, if sGTM is selected
+- The MCP spec contains desired state only, not rationale.
+- Ambiguous Markdown table values remain placeholders until an operator
+  resolves them before apply.
+- Consent changes are out of scope unless explicitly approved in this
+  design plan.
+
+## 11. Implementation order
 
 One commit per step. The implementer follows this list top to bottom.
 
@@ -323,7 +344,7 @@ One commit per step. The implementer follows this list top to bottom.
 12. GA4 Admin API `properties.submitUserDeletion` job + downstream
     erasure integration.
 
-## 11. Verification
+## 12. Verification
 
 - [ ] PII sweep CI test: every event in §5 fires with fixture user, no
       forbidden key or value-shape regex match.
@@ -351,7 +372,7 @@ One commit per step. The implementer follows this list top to bottom.
 - [ ] Account-deletion smoke: deletion triggers GA4 Admin API
       `properties.submitUserDeletion` for each known identifier within SLA.
 
-## 12. Risks & open questions
+## 13. Risks & open questions
 
 - R1. <e.g., "Consent rate in EEA/UK/Switzerland may be <30%; modeled
       conversions help but ad attribution will be soft.">
@@ -359,11 +380,12 @@ One commit per step. The implementer follows this list top to bottom.
 - OQ1. <open question for product/legal>
 - OQ2.
 
-## 13. Deliverables
+## 14. Deliverables
 
 - This plan, frozen at v1.0 once approved.
 - The setup runbook (sibling artifact, see `assets/runbook-template.md`).
 - `docs/README_ANALYTICS.md` durable analytics contract.
+- Optional MCP execution spec, only when automation is requested.
 - Target repo `AGENTS.md` analytics-impact rule.
 - Typed wrapper + scrubber + consent gate code.
 - CI drift check.

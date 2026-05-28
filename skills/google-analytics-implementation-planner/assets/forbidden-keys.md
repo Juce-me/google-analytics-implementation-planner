@@ -153,3 +153,14 @@ Make sure:
 - It's not exposed to the client (server-side only).
 - It's pulled from a secret manager, not committed.
 - Rotation is documented in the design plan §4.
+
+## MCP execution spec notes
+
+The MCP execution spec is desired state, not a secret store. Never write
+real API secrets, OAuth tokens, GTM auth tokens, client secrets, raw
+emails, raw IPs, full URLs with query strings, or Measurement Protocol
+secret values into `*.mcp-execution.yaml`.
+
+Do not globally forbid the GTM built-in variable named `Referrer`. The
+forbidden behavior is storing raw/full referrer URLs with query strings
+as event parameters or custom dimensions.

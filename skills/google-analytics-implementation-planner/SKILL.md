@@ -27,7 +27,9 @@ Measurement Protocol docs.
 
 This skill separates decisions, configuration, and post-launch rules:
 **design plan** (why + implementation order), **setup runbook** (how),
-and **durable analytics contract** (future feature work).
+**durable analytics contract** (future feature work), and, when requested,
+an **MCP execution spec** (machine-readable desired state for a separate
+MCP server).
 
 ## Scope guard
 
@@ -342,10 +344,42 @@ Keep the artifacts separate:
   duplicate the rationale.
 - **Durable analytics contract:** the post-launch source of truth for
   future feature work.
+- **MCP execution spec:** optional machine-readable desired state for a
+  separate custom GA/GTM MCP server.
 
 Templates live in [assets/plan-template.md](assets/plan-template.md),
 [assets/runbook-template.md](assets/runbook-template.md), and
 [assets/analytics-contract-template.md](assets/analytics-contract-template.md).
+When automation is requested, also use
+[assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml).
+
+### 1.11a. Generate MCP execution spec when automation is requested
+
+If the user wants GA4/GTM configuration to be applied by an MCP server,
+generate `docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml`
+from [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml).
+
+The MCP spec is machine-readable desired state. It must not contain
+rationale. It may only contain approved values from the design plan and
+setup runbook: GA4 property/stream placeholders, GTM account/container
+placeholders, custom dimensions, custom metrics, key events, built-in
+variables, data-layer variables, triggers, tags, optional server-side GTM
+settings, validation rules, and publish gate configuration.
+
+Default execution mode is `dry_run`. Publishing must be disabled unless
+the user explicitly requests publish after reviewing the diff and preview
+validation.
+
+Creating a GTM container version is also a gated step, because it
+materializes workspace changes into a container version and removes the
+workspace. Do not enable version creation by default.
+
+Do not parse Markdown tables loosely into executable config if the values
+are ambiguous. Mark ambiguous values as placeholders and require the final
+MCP operator to fill them before apply.
+
+Do not create or modify consent settings unless the design plan explicitly
+approves that behavior.
 
 ### 1.12. Make it durable (instrumentation contract)
 
@@ -405,7 +439,9 @@ Produce the design plan and setup runbook separately in the project's
 existing docs tree (`docs/agents/features/PLANNED-ga4-instrumentation.md`
 plus a sibling `runbook` artifact, following `docs/AGENTS.md` if it
 exists), then create/update `docs/README_ANALYTICS.md` and the target
-repo `AGENTS.md` analytics-impact rule.
+repo `AGENTS.md` analytics-impact rule. If the user asks for
+automation/MCP/configuration execution, also produce the optional MCP
+execution spec as a sibling `*.mcp-execution.yaml` artifact.
 
 - **Design plan:** use `assets/plan-template.md` for the why,
   architecture, event catalog, code anchors, implementation order,
@@ -414,6 +450,9 @@ repo `AGENTS.md` analytics-impact rule.
   GTM/Firebase/MP/sGTM configuration, custom definitions, consent setup,
   debug, validation, operations, and rollback.
 - **Durable contract:** use `assets/analytics-contract-template.md`.
+- **MCP execution spec, when automation is requested:** use
+  `assets/mcp-execution-spec-template.yaml` for the machine-readable
+  desired state.
 
 Keep a **revision header** at the top of each: what changed between
 passes. Plans that don't track their own revisions get re-litigated.
@@ -445,6 +484,13 @@ to that plan, not a replacement for it.
 - High-cardinality dimensions (`user_id`, `order_id`, `session_id` as a
   custom dimension) that hit GA4's cardinality limit and collapse into
   `(other)`.
+- MCP specs with secrets or real API secret values.
+- MCP specs that enable publish or GTM container-version creation by
+  default.
+- MCP specs that invent events not present in the approved event catalog.
+- MCP specs that require one GTM trigger/tag per normal product event.
+- MCP specs that modify consent settings without explicit approval.
+- MCP specs that store full URLs with query strings as event parameters.
 
 ## 4. When to escalate, not plan
 
@@ -483,6 +529,9 @@ Read only the relevant detail:
   dimensions vs metrics, caps, cardinality, scopes.
 - [references/surface-checklist.md](references/surface-checklist.md) —
   full trackable-surface inventory.
+- [references/mcp-automation.md](references/mcp-automation.md) —
+  optional MCP execution-spec boundary, allowed/gated actions, and
+  default dry-run flow.
 
 ## 6. Output templates
 
@@ -493,6 +542,9 @@ Read only the relevant detail:
   steps.
 - [assets/analytics-contract-template.md](assets/analytics-contract-template.md) —
   durable `docs/README_ANALYTICS.md` skeleton for future feature work.
+- [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml) —
+  optional machine-readable desired-state skeleton for custom MCP
+  automation handoff.
 - [assets/forbidden-keys.md](assets/forbidden-keys.md) — starter list of
   parameter names and value-shape regexes that must never leave the
   process boundary.

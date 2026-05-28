@@ -2,8 +2,9 @@
 
 A portable agent **skill** that produces a privacy-first, codebase-anchored
 Google Analytics 4 (GA4) instrumentation plan, separate setup runbook,
-durable analytics contract, and future-feature analytics rule for any
-web, mobile app, server-side, or hybrid application.
+durable analytics contract, future-feature analytics rule, and optional
+MCP execution spec for any web, mobile app, server-side, or hybrid
+application.
 
 Built to work across coding agents that read the [AGENTS.md](https://agents.md)
 standard (Claude Code, Codex, Cursor, Windsurf, Copilot, Aider, Devin,
@@ -26,6 +27,9 @@ track", "set up Google Analytics"), the skill produces:
    payload contract (if server-side), Consent Mode v2 defaults
    snippet, DebugView validation, conditional BigQuery export setup,
    rollback.
+3. **An optional MCP execution spec** — the **automation handoff**.
+   Machine-readable desired state for a separate custom MCP server to
+   apply approved GA4/GTM configuration safely.
 
 The plan and runbook are kept separate by design — they drift if merged.
 The durable `docs/README_ANALYTICS.md` contract and `AGENTS.md`
@@ -67,12 +71,14 @@ google-analytics-skill/
         │   ├── ga4-event-schema.md
         │   ├── ga4-server-side.md
         │   ├── gtm-and-tagging.md
+        │   ├── mcp-automation.md
         │   ├── privacy-consent.md
         │   ├── identity-sessions.md
         │   ├── reporting-config.md
         │   └── surface-checklist.md
         ├── assets/            # Output templates
         │   ├── analytics-contract-template.md
+        │   ├── mcp-execution-spec-template.yaml
         │   ├── plan-template.md
         │   ├── runbook-template.md
         │   └── forbidden-keys.md
@@ -136,6 +142,22 @@ and project skills from `.claude/skills/<skill>/SKILL.md`; see the
 
 ## Usage
 
+### MCP automation handoff
+
+When the user asks for MCP-based GA4/GTM configuration, the skill still
+produces the human design plan and setup runbook first. It then produces
+a machine-readable `*.mcp-execution.yaml` desired-state artifact for a
+separate custom MCP server.
+
+This repo does not implement the MCP server. The official Google
+Analytics MCP server is read-only, so write-side configuration requires
+a custom MCP wrapper around Google Tag Manager API and Google Analytics
+Admin API.
+
+The execution spec defaults to dry-run mode, creates changes in a GTM
+workspace, checks workspace capacity before applying changes, and blocks
+version creation/publish unless explicitly approved.
+
 ### In Claude Code (with the Superpowers framework)
 
 1. Install the skill using one of the Claude Code options above.
@@ -178,10 +200,11 @@ This repo is itself a skill-development environment. The
 4. Repeat until the with-skill outputs are reliably better than the
    baseline.
 
-The starter `evals.json` contains six realistic prompts: greenfield SaaS,
+The starter `evals.json` contains eight realistic prompts: greenfield SaaS,
 child-audience escalation, ecommerce migration to server-side,
 broad-vendor scope guarding, React Native/Firebase app streams, and a
-GTM web contract case. Extend it as the skill matures.
+GTM web contract case, plus MCP execution-spec and publish-guard cases.
+Extend it as the skill matures.
 
 ## Contributing
 

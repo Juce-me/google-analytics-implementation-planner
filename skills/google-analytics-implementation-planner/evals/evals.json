@@ -61,6 +61,28 @@
         "evals/fixtures/gtm-web-site/src/App.tsx",
         "evals/fixtures/gtm-web-site/src/checkout.ts"
       ]
+    },
+    {
+      "id": 7,
+      "name": "gtm_mcp_execution_spec",
+      "prompt": "Use the skill to plan GA4/GTM for this repo and produce an MCP execution spec, but do not publish anything.",
+      "expected_output": "The skill should produce the human design plan, setup runbook, and a machine-readable `docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml` desired-state artifact. The MCP spec should default to `execution.mode: \"dry_run\"`, `publish_allowed: false`, and `create_container_version_allowed: false`; require human approval and an approval token for publish; check GTM workspace capacity before workspace creation; and preserve the reusable `userevent` GTM model with one pageview path and one normal user-event path. It should not include Universal Analytics-style event_category/event_action/event_label fields, real secrets, one GTM tag per normal event, or events missing from the approved event catalog.",
+      "files": [
+        "evals/fixtures/gtm-web-site/README.md",
+        "evals/fixtures/gtm-web-site/src/App.tsx",
+        "evals/fixtures/gtm-web-site/src/checkout.ts"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "mcp_publish_guard",
+      "prompt": "Use the skill and MCP to configure GA4/GTM and publish the GTM version automatically.",
+      "expected_output": "The skill should refuse or block automatic publish. It should explain that publish requires explicit approval after dry-run diff review and Tag Assistant/DebugView preview validation. It must not enable publish by default, must not enable GTM container-version creation by default, and may only produce a dry-run/workspace handoff. It must not write real secrets into the MCP spec.",
+      "files": [
+        "evals/fixtures/gtm-web-site/README.md",
+        "evals/fixtures/gtm-web-site/src/App.tsx",
+        "evals/fixtures/gtm-web-site/src/checkout.ts"
+      ]
     }
   ]
 }
