@@ -98,6 +98,10 @@ It should not require another GTM trigger or per-event tag. GTM changes
 only when a new app-owned data layer variable is truly needed, when a
 parameter is retired, or when ecommerce is introduced.
 
+Each `dataLayer.push` represents one analytics occurrence. Do not batch
+multiple GA4 events into one push; GTM processes each pushed message and
+fires matching tags for that message.
+
 If the page-view tag emits `page_view`, disable duplicate automatic
 page-view sends: set Google tag `send_page_view = false`, keep only one
 Enhanced Measurement/pageview source of truth, and disable history-change

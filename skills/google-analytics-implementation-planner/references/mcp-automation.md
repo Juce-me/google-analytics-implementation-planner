@@ -80,7 +80,9 @@ approval:
   or `transaction_id`.
 - No per-event GTM trigger/tag explosion for normal product events.
   Normal web tracking uses the reusable `userevent` pageview and event
-  paths; ecommerce stays separate only when deliberately active.
+  paths, one `dataLayer.push` per analytics occurrence, and no batched
+  GA4 events inside a single push; ecommerce stays separate only when
+  deliberately active.
 - No secrets in specs.
 - No full URLs with query strings as event parameters or custom
   dimensions.
