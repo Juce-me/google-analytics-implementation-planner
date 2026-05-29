@@ -3,14 +3,16 @@ status: planned
 type: ga4_gtm_mcp_execution_spec
 version: 1
 
+# Validator-aligned starter spec for ga4-gtm-config-mcp.
+# Replace placeholder resource names with operator-supplied values before
+# non-dry-run apply. `target.environment` must be one of dev/staging/prod.
 target:
-  environment: "<dev|staging|prod>"
-  ga4_property_id: "<GA4_PROPERTY_ID>"
-  web_stream_id: "<WEB_STREAM_ID>"
-  measurement_id: "<G-XXXX>"
-  gtm_account_id: "<GTM_ACCOUNT_ID>"
-  gtm_web_container_id: "<GTM_WEB_CONTAINER_ID>"
-  gtm_server_container_id: "<optional; only when sGTM is selected>"
+  environment: "dev"
+  ga4_property_id: "properties/000000000"
+  web_stream_id: "properties/000000000/dataStreams/0000000000"
+  measurement_id: "G-XXXXXXX000"
+  gtm_account_id: "accounts/0000000"
+  gtm_web_container_id: "accounts/0000000/containers/0000000"
 
 source_artifacts:
   design_plan: "docs/agents/features/PLANNED-ga4-instrumentation.md"
@@ -49,7 +51,7 @@ ga4_admin:
     - display_name: "Result time seconds"
       parameter_name: "time_seconds"
       scope: "EVENT"
-      unit: "STANDARD"
+      unit: "SECONDS"
       description: "Duration in seconds approved in the design plan."
       decision: "D2"
       source_catalog_row: "<event catalog row or anchor>"
@@ -71,6 +73,9 @@ gtm_web:
     - "Page Path"
     - "Referrer"
 
+  # Add one concrete Data Layer Variable per approved nested field.
+  # Do not leave wildcard placeholders such as eventParams.* or
+  # eventParams.<param> in an executable spec.
   data_layer_variables:
     - name: "DLV - event_type"
       data_layer_variable_name: "event_type"
@@ -92,10 +97,6 @@ gtm_web:
       data_layer_variable_name: "userParams.page_name"
       version: 2
       purpose: "logical page name only when approved"
-    - name: "DLV - eventParams.<param>"
-      data_layer_variable_name: "eventParams.<param>"
-      version: 2
-      purpose: "replace with approved low-cardinality parameter"
 
   triggers:
     - name: "CE - userevent - pageview"
@@ -131,7 +132,8 @@ gtm_web:
       params:
         feature_name: "{{DLV - feature_name}}"
         screen_name: "{{DLV - screen_name}}"
-        "<approved_param>": "{{DLV - eventParams.<param>}}"
+        # Add concrete approved params only, for example:
+        # method: "{{DLV - eventParams.method}}"
 
   ecommerce:
     enabled: false
@@ -180,6 +182,7 @@ validation:
     - "normal_events_use_reusable_userevent_paths"
     - "one_datalayer_push_per_analytics_occurrence"
     - "no_per_event_gtm_tag_explosion"
+    - "no_executable_wildcard_dlv_or_tag_param_placeholders"
     - "gtm_workspace_capacity_checked"
     - "gtm_workspace_created_before_changes"
     - "gtm_preview_created_before_publish"

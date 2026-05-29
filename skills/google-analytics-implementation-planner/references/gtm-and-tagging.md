@@ -51,9 +51,11 @@ setup. If yes, default to a low-configuration dataLayer contract:
 
 **Built-ins first:** do not push custom page, click, device, geo,
 campaign, or traffic-source properties when GA4 or GTM already provides
-them. Use GTM Built-In Variables (Page URL, Page Path, Referrer, Click
-ID, Click URL, etc.) and GA4 predefined dimensions/metrics first.
-Reserve dataLayer keys for app-owned semantics GA4/GTM cannot infer.
+them. For planner-facing MCP specs, use only the MCP-supported built-ins
+`Page URL`, `Page Path`, `Page Hostname`, `Referrer`, and `Event`; never
+request `Page Title`. In manual GTM setup, also use click/scroll/form
+built-ins as needed and GA4 predefined dimensions/metrics first. Reserve
+dataLayer keys for app-owned semantics GA4/GTM cannot infer.
 
 ```js
 window.dataLayer = window.dataLayer || [];

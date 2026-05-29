@@ -34,8 +34,11 @@ provides the answer via:
 - predefined dimensions/metrics such as page/screen, traffic source,
   device, geo, campaign, browser, operating system, landing page, and
   session source/medium
-- GTM Built-In Variables such as Page URL, Page Path, Referrer, Click ID,
-  Click URL, click classes/text, scroll depth, form, and error variables
+- GTM Built-In Variables such as Page URL, Page Path, Page Hostname,
+  Referrer, Event, Click ID, Click URL, click classes/text, scroll depth,
+  form, and error variables. In planner-facing MCP specs, use only Page
+  URL, Page Path, Page Hostname, Referrer, and Event, and never Page
+  Title.
 - User-ID, transaction ID, or ecommerce `items[]` semantics
 
 Only create a custom property/configuration when a named decision cannot
