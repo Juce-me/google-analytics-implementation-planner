@@ -109,11 +109,9 @@ Variables or GA4 predefined dimensions/metrics already support them.
 For GTM, derive URL/path/hostname/referrer/event fields from built-ins by
 default; the planner-facing MCP-supported built-ins are `Page URL`,
 `Page Path`, `Page Hostname`, `Referrer`, and `Event`. Do not list
-`Page Title` as a GTM Built-In Variable. Let the Google tag/GA4 default
-use `document.title`, or map `userParams.page_title` only when the
-product needs a sanitized app-owned title. Map `userParams.page_location`
-only when it is a full canonical sanitized URL that the built-in cannot
-provide.
+`Page Title` as a GTM Built-In Variable. Use `page_name` for the logical
+page identity, and map `userParams.page_location` only when it is a full
+canonical sanitized URL that the built-in cannot provide.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
@@ -154,7 +152,6 @@ deltas. Reference `references/gtm-and-tagging.md` decision matrix.
   userParams: {
     page_name?:     string,
     page_location?: string,    // full sanitized URL when not using GTM built-ins
-    page_title?:    string,    // app-owned title only when built-in is insufficient
     screen_name?:   string,
   },
   eventParams:      Record<string, string | number | boolean | null>,
@@ -204,9 +201,9 @@ The contract. Every row must trace to a decision in §1.
 
 | Trigger | Event type | Event name | Feature/screen | userParams | eventParams | File/line anchor | Server/browser side | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; `page_location` from GTM built-ins; `page_title` from GA default unless app-owned | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
-| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`; `page_location` from GTM built-ins; `page_title` from GA default unless app-owned | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
-| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`; `page_location` from GTM built-ins; `page_title` from GA default unless app-owned | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
+| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; `page_location` from GTM built-ins | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
+| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`; `page_location` from GTM built-ins | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
+| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`; `page_location` from GTM built-ins | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
 | ... | | | | | | | | |
 
 Every parameter listed here must be passed; nothing else is. The

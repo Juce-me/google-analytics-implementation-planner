@@ -25,7 +25,6 @@ Define this before vendor mapping:
   userParams: {
     page_name?: string;
     page_location?: string; // full sanitized URL when not using GTM built-ins
-    page_title?: string;
     screen_name?: string;
   };
   eventParams: Record<string, string | number | boolean | null>;
@@ -116,7 +115,7 @@ those namespaces are reserved.
 | Event name length | 40 chars |
 | Parameter name length | 40 chars |
 | Parameter value length | 100 chars (Standard); 500 chars (360) |
-| Page parameter value length | `page_location` 1,000 chars; `page_referrer` 420; `page_title` 300 |
+| Page parameter value length | `page_location` 1,000 chars; `page_referrer` 420 |
 | Parameters per event | 25 (excluding automatically logged ones) |
 | Items per event (ecommerce) | 200 |
 | Custom item-scoped parameters per ecommerce event | 27 |
@@ -173,8 +172,8 @@ register it as a custom dimension.
 - [ ] No payload uses `event_group` or `ga4_event_name`.
 - [ ] Product/surface grouping uses `feature_name` or `screen_name`.
 - [ ] Page/screen context lives in `userParams` with GA4/GTM-compatible
-      keys such as `page_location`, `page_title`, `screen_name`, and
-      `page_name` only when a logical product page name is needed.
+      keys such as `page_location`, `screen_name`, and `page_name` only
+      when a logical product page name is needed.
 - [ ] Every event in the catalog uses a recommended name where one
       exists, or a custom name that doesn't collide with reserved.
 - [ ] Every `purchase` carries `transaction_id`, `items[]`, `currency`

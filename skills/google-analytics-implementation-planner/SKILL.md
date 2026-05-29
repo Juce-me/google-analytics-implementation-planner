@@ -167,10 +167,9 @@ custom GA4-safe name. For `event_type: "pageview"`, GA4 receives
 
 Use `feature_name` or `screen_name` for product/surface grouping; do not
 use `event_group`. Keep page/user context in `userParams` by default
-(`page_name`, `page_location`, `page_title`, `screen_name`), but when
-using GTM, map URL/path/referrer fields from GTM Built-In Variables and
-let the Google tag/GA4 default provide `page_title` unless the plan
-proves an app-owned title is required. For MCP execution specs, keep GTM
+(`page_name`, `page_location`, `screen_name`); when using GTM, map
+URL/path/referrer fields from GTM Built-In Variables and use `page_name`
+for the logical page identity. For MCP execution specs, keep GTM
 built-ins to the MCP-supported planner-facing list: `Page URL`,
 `Page Path`, `Page Hostname`, `Referrer`, and `Event`; never include
 `Page Title`. Keep action-specific payload in `eventParams`. Full shape

@@ -245,9 +245,8 @@ GTM admin → Workspace.
    | `DLV - eventParams.method` | `eventParams.method` | 2 | `method` | tags listed in the event catalog |
 
    Do not create variables for page URL/path/referrer, device, geo,
-   campaign, traffic, or click fields that built-ins already cover. Map
-   `userParams.page_title` only when the plan explicitly requires a
-   sanitized app-owned title. If a non-GTM sender uses
+   campaign, traffic, or click fields that built-ins already cover. Use
+   `userParams.page_name` for the logical page identity. If a non-GTM sender uses
    `userParams.page_location`, it must be a full canonical sanitized URL,
    not a relative path.
 8. Preview before publishing. Confirm normal page/user events fire only

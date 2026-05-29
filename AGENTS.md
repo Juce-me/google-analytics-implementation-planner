@@ -226,7 +226,7 @@ When the user corrects your approach, append a one-line rule here before ending 
 
 - GA4 custom definitions must reuse predefined dimensions/metrics first; never create bulk or boolean-presence dimensions such as `*_exists` or `has_*`.
 - GA4 skill schemas must use the canonical `trigger: "userevent"` envelope with `event_type`, GA4-native `event_name`, `feature_name`/`screen_name`, `userParams`, and `eventParams`; GTM dataLayer pushes also need `event: "userevent"`, while vendor sends use native mapped shapes; never add `event_group`, `ga4_event_name`, or internal-to-GA4 event-name rewrites.
-- GTM web built-in variables must not include Page Title; planner-facing MCP specs may use only Page URL, Page Path, Page Hostname, Referrer, and Event, with default templates including only the subset needed.
+- GTM web built-in variables must not include Page Title, and the canonical `userParams` must not model `page_title`; rely on GA4's automatic page-title collection (`document.title`) on web and use `page_name` for the logical page identity. Planner-facing MCP specs may use only Page URL, Page Path, Page Hostname, Referrer, and Event, with default templates including only the subset needed.
 
 ---
 
