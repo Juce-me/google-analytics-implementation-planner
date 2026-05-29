@@ -69,7 +69,6 @@ gtm_web:
   built_in_variables:
     - "Page URL"
     - "Page Path"
-    - "Page Title"
     - "Referrer"
 
   data_layer_variables:
@@ -179,6 +178,7 @@ validation:
     - "no_unapproved_custom_dimensions"
     - "no_high_cardinality_custom_dimensions"
     - "normal_events_use_reusable_userevent_paths"
+    - "one_datalayer_push_per_analytics_occurrence"
     - "no_per_event_gtm_tag_explosion"
     - "gtm_workspace_capacity_checked"
     - "gtm_workspace_created_before_changes"

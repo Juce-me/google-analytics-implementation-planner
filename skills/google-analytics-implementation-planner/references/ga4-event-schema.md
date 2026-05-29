@@ -162,6 +162,8 @@ register it as a custom dimension.
       `event_type: "pageview" | "event"`. GTM dataLayer pushes also
       include top-level `event: "userevent"` because GTM fires on
       `event`.
+- [ ] GTM web sends one `dataLayer.push` per analytics occurrence; no
+      push batches multiple GA4 events.
 - [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK,
       Measurement Protocol, or sGTM) and do not leak internal-only
       fields such as `trigger` or `event_type` unless the plan explicitly

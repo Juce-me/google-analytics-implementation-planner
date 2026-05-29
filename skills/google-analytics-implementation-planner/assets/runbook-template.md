@@ -200,7 +200,8 @@ GTM admin → Workspace.
 
    Adding a new normal event updates the app taxonomy/tests and the
    `userevent` payload only; it does not create another GTM trigger or
-   per-event tag.
+   per-event tag. Each `dataLayer.push` represents one analytics
+   occurrence; do not batch multiple GA4 events into one push.
    When manual `userevent` pageviews are selected, set the Google tag
    configuration parameter `send_page_view` to `false` everywhere the
    base tag loads, and disable duplicate Enhanced Measurement or

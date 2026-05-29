@@ -24,8 +24,9 @@ future feature work updates.
 - Page/screen context belongs in `userParams` by default, using
   GA4/GTM-compatible keys such as `page_location`, `page_title`,
   `screen_name`, and `page_name` when a logical product page name is
-  needed. In GTM, page URL/title come from built-ins unless a plan
-  explicitly requires a full sanitized app-owned value.
+  needed. In GTM, page URL/path/referrer come from built-ins; page title
+  uses the GA default unless a plan explicitly requires a sanitized
+  app-owned value.
 - Missing values are represented as null/omitted, not boolean presence
   dimensions. Prefer `geo: null` over `geo_exists: false`.
 
@@ -54,18 +55,20 @@ Never add bulk custom definitions or boolean presence dimensions such as
 
 If the active architecture uses GTM web, normal analytics events must use
 one dataLayer event name, `userevent`, with approved filtered reusable
-GTM trigger/tag paths. A normal feature PR may add or change app-owned
-dataLayer params, taxonomy rows, and tests, but must not create a new
-GTM trigger/tag per event or duplicate GTM/GA4 built-ins for page,
-device, geo, campaign, traffic-source, or click fields. Ecommerce uses
-approved GA4 ecommerce dataLayer events plus an `ecommerce` object
-(`currency`, `value`, `transaction_id`, `items[]`).
+GTM trigger/tag paths. Each `dataLayer.push` represents one analytics
+occurrence; do not batch multiple GA4 events into one push. A normal
+feature PR may add or change app-owned dataLayer params, taxonomy rows,
+and tests, but must not create a new GTM trigger/tag per event or
+duplicate GTM/GA4 built-ins for page, device, geo, campaign,
+traffic-source, or click fields. Ecommerce uses approved GA4 ecommerce
+dataLayer events plus an `ecommerce` object (`currency`, `value`,
+`transaction_id`, `items[]`).
 
 ## Event taxonomy
 
 | Trigger | Event type | Event name | Feature/screen | userParams | eventParams | File/line anchor | Server/browser side | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; page URL/title from built-ins when GTM is active | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | Signup funnel conversion |
+| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; page URL from GTM built-ins; page title from GA default unless app-owned | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | Signup funnel conversion |
 
 ## Required params
 

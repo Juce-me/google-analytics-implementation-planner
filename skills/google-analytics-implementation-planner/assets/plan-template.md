@@ -69,7 +69,8 @@ consider `https://region1.google-analytics.com/mp/collect?...`.>
 Normal web analytics uses one dataLayer event name, `userevent`, with two
 filtered reusable GTM trigger/tag paths. GTM fires on the top-level
 `event` key; keep `trigger` as canonical audit metadata. Do not create a
-new GTM trigger or tag per product event.
+new GTM trigger or tag per product event. Send one `dataLayer.push` per
+analytics occurrence; do not batch multiple GA4 events into one push.
 
 | dataLayer event | Filter | GA4 event name | Data layer variables |
 | --- | --- | --- | --- |
@@ -105,9 +106,12 @@ automatic/enhanced page-view sends and set `send_page_view = false`.
 Do not invent dataLayer or GA4 params for page URL/path/referrer, device,
 geo, campaign, traffic source, or click fields when GTM Built-In
 Variables or GA4 predefined dimensions/metrics already support them.
-For GTM, derive `page_location` and `page_title` from built-ins by
-default; map `userParams.page_location` only when it is a full canonical
-sanitized URL that the built-in cannot provide.
+For GTM, derive URL/path/referrer fields from built-ins by default; do
+not list Page Title as a GTM Built-In Variable. Let the Google tag/GA4
+default use `document.title`, or map `userParams.page_title` only when
+the product needs a sanitized app-owned title. Map
+`userParams.page_location` only when it is a full canonical sanitized URL
+that the built-in cannot provide.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
@@ -198,9 +202,9 @@ The contract. Every row must trace to a decision in §1.
 
 | Trigger | Event type | Event name | Feature/screen | userParams | eventParams | File/line anchor | Server/browser side | Decision/use |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
-| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
-| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`; `page_location`/`page_title` from GTM built-ins unless non-GTM | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
+| `userevent` | `event` | `sign_up` | `feature_name: auth`, `screen_name: signup` | `page_name`; `page_location` from GTM built-ins; `page_title` from GA default unless app-owned | required: `method`; optional: `plan_tier` | `src/auth/signup.ts:42` | browser | D1 |
+| `userevent` | `event` | `login` | `feature_name: auth`, `screen_name: login` | `page_name`; `page_location` from GTM built-ins; `page_title` from GA default unless app-owned | required: `method`; optional: `login_result` | `src/auth/login.ts:88` | browser | D1 |
+| `userevent` | `event` | `search` | `feature_name: search`, `screen_name: search` | `page_name`; `page_location` from GTM built-ins; `page_title` from GA default unless app-owned | required: `search_term` (allowlisted/bucketed; no raw free text); optional: `search_location`, `result_count_bucket` | `src/search/handler.ts:17` | browser | D2 |
 | ... | | | | | | | | |
 
 Every parameter listed here must be passed; nothing else is. The
@@ -355,6 +359,8 @@ One commit per step. The implementer follows this list top to bottom.
 - [ ] Internal contract and GTM dataLayer assertions check
       `event: "userevent"` where GTM is used, plus
       `trigger: "userevent"` and `event_type: "pageview" | "event"`.
+- [ ] GTM web sends one `dataLayer.push` per analytics occurrence; no
+      push batches multiple GA4 events.
 - [ ] `event_name` is the GA4 event name with no rewrite table.
 - [ ] No `event_group` or `ga4_event_name` field appears in captured
       payloads.

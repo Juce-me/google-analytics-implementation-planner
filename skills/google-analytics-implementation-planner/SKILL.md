@@ -168,9 +168,10 @@ custom GA4-safe name. For `event_type: "pageview"`, GA4 receives
 Use `feature_name` or `screen_name` for product/surface grouping; do not
 use `event_group`. Keep page/user context in `userParams` by default
 (`page_name`, `page_location`, `page_title`, `screen_name`), but when
-using GTM, map GA4 page fields from GTM Built-In Variables unless the
-plan proves an app-owned value is required. Keep action-specific payload
-in `eventParams`. Full shape and validation rules live in
+using GTM, map URL/path/referrer fields from GTM Built-In Variables and
+let the Google tag/GA4 default provide `page_title` unless the plan
+proves an app-owned title is required. Keep action-specific payload in
+`eventParams`. Full shape and validation rules live in
 [references/ga4-event-schema.md](references/ga4-event-schema.md).
 
 Before adding a parameter, dataLayer variable, or custom definition,
@@ -206,7 +207,8 @@ The common patterns and when each is right:
   not replace it.
 - **GTM web container** — use only when needed. Normal web analytics uses
   one `userevent` dataLayer event name with two filtered reusable
-  trigger/tag paths; ecommerce stays separate.
+  trigger/tag paths; send one `dataLayer.push` per analytics occurrence,
+  not a batch of multiple GA4 events; ecommerce stays separate.
 - **Measurement Protocol augmentation** — sends server/offline events
   into an existing web/app stream, can recover critical events ad
   blockers drop, and can enrich with server-only truth. It requires the
@@ -227,6 +229,8 @@ custom sGTM clients. Name the exact endpoint/path and payload shape:
   event_type: 'pageview' | 'event', event_name, userParams,
   eventParams })` for normal GTM web sends. GTM fires on top-level
   `event`; `trigger` stays in the canonical contract for audit/tests.
+  Each push represents one GA4 event occurrence; never batch multiple
+  GA4 events into one push.
 - Firebase Analytics SDK `logEvent` / `setUserID` / `setConsent` for
   iOS/Android app sends
 - `https://www.google-analytics.com/mp/collect?...` with JSON payload for
@@ -326,7 +330,8 @@ correction in a revision header. Cover:
   proposed patterns match existing project conventions, deps, lint rules?
   If GTM web is used, confirm no normal event requires a per-event GTM
   tag or trigger beyond the approved `userevent` filtered trigger/tag
-  paths.
+  paths, and that each `dataLayer.push` represents exactly one analytics
+  occurrence.
 
 Fix every finding before finalizing. Note the corrections in a revision
 header.
@@ -419,6 +424,8 @@ checkbox the implementer ticks:
 - [ ] Internal contract and GTM dataLayer payloads use
       `event: "userevent"` where GTM is used, plus
       `trigger: "userevent"` and `event_type: "pageview" | "event"`
+- [ ] GTM web sends one `dataLayer.push` per analytics occurrence; no
+      push batches multiple GA4 events.
 - [ ] `event_name` is already the GA4 event name; no internal-to-GA4
       rewrite table exists
 - [ ] No `event_group` or `ga4_event_name` field appears in new payloads
