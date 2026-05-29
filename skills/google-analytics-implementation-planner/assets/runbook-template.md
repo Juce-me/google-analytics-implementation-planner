@@ -25,6 +25,10 @@ Author: <your-handle>
 - [ ] Access to the CMP admin panel (if applicable).
 - [ ] Secret-manager access to write the `PEPPER` for user-id hashing.
 - [ ] If sGTM: GCP project + billing + Cloud Run deploy permissions.
+- [ ] If using GA4/GTM Admin API or MCP automation: create or select a
+      Google Cloud service account using Google's official guide:
+      <https://cloud.google.com/iam/docs/service-accounts-create>.
+      Keep credentials out of docs and specs.
 
 ## 1. Create / configure the GA4 property
 

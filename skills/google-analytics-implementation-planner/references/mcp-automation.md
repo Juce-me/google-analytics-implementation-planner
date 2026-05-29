@@ -25,6 +25,12 @@ Measurement Protocol secrets, key events, custom dimensions, and custom
 metrics where supported. Some GA Admin API areas are Alpha/Beta, so write
 operations must stay conservative and explicit.
 
+Authentication for the custom MCP/API runner belongs to operator setup,
+not the generated desired-state spec. If a service account is required,
+link to Google's official service-account creation guide instead of
+reproducing click-paths: <https://cloud.google.com/iam/docs/service-accounts-create>.
+Keep credentials and key material out of docs and specs.
+
 ## Allowed MCP actions
 
 - Read current GA4/GTM state.
@@ -93,7 +99,7 @@ approval:
 
 ## Sources
 
-Authoritative docs last checked: 2026-05-28.
+Authoritative docs last checked: 2026-05-29.
 
 - CONFIRMED: https://developers.google.com/tag-platform/tag-manager/api/v2
 - CONFIRMED: https://developers.google.com/tag-platform/tag-manager/api/reference/rest/v2/accounts.containers.workspaces/create_version
@@ -102,3 +108,4 @@ Authoritative docs last checked: 2026-05-28.
 - CONFIRMED: https://developers.google.com/analytics/devguides/MCP
 - CONFIRMED: https://support.google.com/tagmanager/answer/6107056
 - CONFIRMED: https://support.google.com/tagmanager/answer/10718549
+- CONFIRMED: https://cloud.google.com/iam/docs/service-accounts-create
