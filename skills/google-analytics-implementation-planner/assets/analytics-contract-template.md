@@ -60,7 +60,10 @@ occurrence; do not batch multiple GA4 events into one push. A normal
 feature PR may add or change app-owned dataLayer params, taxonomy rows,
 and tests, but must not create a new GTM trigger/tag per event or
 duplicate GTM/GA4 built-ins for page, device, geo, campaign,
-traffic-source, or click fields. Ecommerce uses approved GA4 ecommerce
+traffic-source, or click fields. Planner-facing MCP specs may use only
+the supported GTM built-ins `Page URL`, `Page Path`, `Page Hostname`,
+`Referrer`, and `Event`, and must not include `Page Title`. Ecommerce
+uses approved GA4 ecommerce
 dataLayer events plus an `ecommerce` object (`currency`, `value`,
 `transaction_id`, `items[]`).
 

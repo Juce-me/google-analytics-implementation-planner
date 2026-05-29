@@ -170,8 +170,11 @@ use `event_group`. Keep page/user context in `userParams` by default
 (`page_name`, `page_location`, `page_title`, `screen_name`), but when
 using GTM, map URL/path/referrer fields from GTM Built-In Variables and
 let the Google tag/GA4 default provide `page_title` unless the plan
-proves an app-owned title is required. Keep action-specific payload in
-`eventParams`. Full shape and validation rules live in
+proves an app-owned title is required. For MCP execution specs, keep GTM
+built-ins to the MCP-supported planner-facing list: `Page URL`,
+`Page Path`, `Page Hostname`, `Referrer`, and `Event`; never include
+`Page Title`. Keep action-specific payload in `eventParams`. Full shape
+and validation rules live in
 [references/ga4-event-schema.md](references/ga4-event-schema.md).
 
 Before adding a parameter, dataLayer variable, or custom definition,
@@ -371,6 +374,11 @@ placeholders, custom dimensions, custom metrics, key events, built-in
 variables, data-layer variables, triggers, tags, optional server-side GTM
 settings, validation rules, and publish gate configuration.
 
+Use concrete schema values wherever the MCP schema requires enums. For
+example, `target.environment` must be `dev`, `staging`, or `prod`, not a
+combined placeholder string. Target resource ids may remain obvious
+placeholder resource names until the operator supplies real values.
+
 Default execution mode is `dry_run`. Publishing must be disabled unless
 the user explicitly requests publish after reviewing the diff and preview
 validation.
@@ -381,7 +389,10 @@ workspace. Do not enable version creation by default.
 
 Do not parse Markdown tables loosely into executable config if the values
 are ambiguous. Mark ambiguous values as placeholders and require the final
-MCP operator to fill them before apply.
+MCP operator to fill them before apply. Do not put wildcard-style
+`eventParams.*`, `userParams.*`, or `<approved_param>` entries into the
+executable YAML; create only concrete Data Layer Variables and tag params
+approved by the event catalog.
 
 Do not create or modify consent settings unless the design plan explicitly
 approves that behavior.

@@ -29,6 +29,9 @@ operations must stay conservative and explicit.
 
 - Read current GA4/GTM state.
 - Validate the `*.mcp-execution.yaml` schema and guardrails.
+- Reject executable wildcard placeholders such as `eventParams.*`,
+  `userParams.*`, or `<approved_param>`; the spec must contain concrete
+  Data Layer Variables and tag params from the approved event catalog.
 - Produce a dry-run diff.
 - Check GTM workspace capacity before creating a new workspace.
 - Create a GTM workspace when capacity is available.

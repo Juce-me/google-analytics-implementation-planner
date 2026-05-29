@@ -106,12 +106,14 @@ automatic/enhanced page-view sends and set `send_page_view = false`.
 Do not invent dataLayer or GA4 params for page URL/path/referrer, device,
 geo, campaign, traffic source, or click fields when GTM Built-In
 Variables or GA4 predefined dimensions/metrics already support them.
-For GTM, derive URL/path/referrer fields from built-ins by default; do
-not list Page Title as a GTM Built-In Variable. Let the Google tag/GA4
-default use `document.title`, or map `userParams.page_title` only when
-the product needs a sanitized app-owned title. Map
-`userParams.page_location` only when it is a full canonical sanitized URL
-that the built-in cannot provide.
+For GTM, derive URL/path/hostname/referrer/event fields from built-ins by
+default; the planner-facing MCP-supported built-ins are `Page URL`,
+`Page Path`, `Page Hostname`, `Referrer`, and `Event`. Do not list
+`Page Title` as a GTM Built-In Variable. Let the Google tag/GA4 default
+use `document.title`, or map `userParams.page_title` only when the
+product needs a sanitized app-owned title. Map `userParams.page_location`
+only when it is a full canonical sanitized URL that the built-in cannot
+provide.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
 deltas. Reference `references/gtm-and-tagging.md` decision matrix.
@@ -327,6 +329,9 @@ CI drift checks:
   resolves them before apply.
 - Consent changes are out of scope unless explicitly approved in this
   design plan.
+- The executable YAML uses only concrete Data Layer Variables and tag
+  params from §5; wildcard placeholders like `eventParams.*` or
+  `<approved_param>` must be resolved before apply.
 
 ## 11. Implementation order
 

@@ -226,10 +226,12 @@ GTM admin → Workspace.
 6. Google tags have built-in consent checks. Add required consent only
    when deliberately implementing basic-mode blocking; otherwise you
    suppress advanced-mode cookieless pings/modeling.
-7. Variables → enable built-ins first (Page URL, Page Path, Referrer,
-   Click ID, Click URL, click classes/text, scroll/form/error variables
-   as needed). Create Data Layer Variables only for app-owned params that
-   GA4/GTM does not already provide. There is no wildcard mapping:
+7. Variables → enable built-ins first. The planner-facing MCP-supported
+   GTM built-ins are Page URL, Page Path, Page Hostname, Referrer, and
+   Event; manual GTM setup may also use click, scroll, form, and error
+   built-ins as needed. Do not create or request a Page Title built-in.
+   Create Data Layer Variables only for app-owned params that GA4/GTM
+   does not already provide. There is no wildcard mapping:
    create one Data Layer Variable per nested field and one GA4 parameter
    row per parameter.
 
@@ -240,12 +242,14 @@ GTM admin → Workspace.
    | `DLV - feature_name` | `feature_name` | 2 | `feature_name` | `GA4 - User Event` when registered |
    | `DLV - screen_name` | `screen_name` | 2 | `screen_name` | page/user tags when needed |
    | `DLV - userParams.page_name` | `userParams.page_name` | 2 | `page_name` | page/user tags when registered |
-   | `DLV - eventParams.<param>` | `eventParams.<param>` | 2 | `<param>` | tags listed in the event catalog |
+   | `DLV - eventParams.method` | `eventParams.method` | 2 | `method` | tags listed in the event catalog |
 
-   Do not create variables for page URL/path/title/referrer, device, geo,
-   campaign, traffic, or click fields that built-ins already cover. If a
-   non-GTM sender uses `userParams.page_location`, it must be a full
-   canonical sanitized URL, not a relative path.
+   Do not create variables for page URL/path/referrer, device, geo,
+   campaign, traffic, or click fields that built-ins already cover. Map
+   `userParams.page_title` only when the plan explicitly requires a
+   sanitized app-owned title. If a non-GTM sender uses
+   `userParams.page_location`, it must be a full canonical sanitized URL,
+   not a relative path.
 8. Preview before publishing. Confirm normal page/user events fire only
    the approved `userevent` trigger/tag paths; ecommerce fires only its
    dedicated ecommerce path and uses the `ecommerce` object.
