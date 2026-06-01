@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Template version: 2026-05-21
+Template version: 2026-05-31
 
 Drop-in operating instructions for coding agents. Read this file before every task.
 
@@ -28,6 +28,7 @@ These rules override everything else in this file when in conflict:
 3. **Never fabricate.** Not file paths, not commit hashes, not API names, not test results, not library functions. If you don't know, read the file, run the command, or say "I don't know, let me check."
 4. **Stop when confused.** If the task has two plausible interpretations, ask. Do not pick silently and proceed.
 5. **Touch only what you must.** Every changed line must trace directly to the user's request. No drive-by refactors, reformatting, or "while I was in there" cleanups.
+6. **Do not commit local or personal data.** Use repo-relative paths in committed files. Never commit absolute local paths, real emails, local machine usernames, hostnames, secrets, tokens, or other user-specific data; redact or replace them with placeholders.
 
 ---
 
@@ -107,7 +108,7 @@ For every task:
 - Never report "done" based on a plausible-looking diff alone. Plausibility is not correctness.
 - When debugging, address root causes, not symptoms. Suppressing the error is not fixing the error.
 - For UI changes, verify visually: screenshot before, screenshot after, describe the diff.
-- For Python work, always use a project-local virtual environment. Prefer an existing `.venv`; create `.venv` if missing before installing dependencies or running Python tools. Do not install packages into system Python.
+- Run project commands through the project-local environment or pinned runtime manager whenever the toolchain supports it. For Python, prefer an existing `.venv`; create `.venv` if missing before installing dependencies or running Python-based install, build, test, lint/typecheck, or local-run commands. Use `.venv/bin/python -m ...` or activate `.venv` before invoking Python tools, and never install packages into system Python. For Node/npm, use the repo-pinned runtime such as Volta (`node`, `npm`, `npx`) when configured instead of forcing commands through `.venv`.
 - Use CLI tools (gh, aws, gcloud, kubectl) when they exist. They are more context-efficient than reading docs or hitting APIs unauthenticated.
 - When reading logs, errors, or stack traces, read the whole thing. Half-read traces produce wrong fixes.
 
@@ -193,7 +194,7 @@ This repo is a **skill-development environment** for `skills/google-analytics-im
 - Run locally: not applicable.
 
 ### Layout
-- Project root: `/Users/a.feygin/Documents/google-analytics-implementation-planner/`.
+- Project root: the repository root (where this `AGENTS.md` lives).
 - The skill: `skills/google-analytics-implementation-planner/` (entry point `SKILL.md`, Codex metadata in `agents/openai.yaml`, deep-dive docs in `references/`, output templates in `assets/`, test prompts in `evals/`).
 - Docs: `docs/AGENTS.md` defines agent work artifact rules and doc-review criteria; agent artifacts live under `docs/agents/features/`, `docs/agents/prompts/`, `docs/agents/bugfixes/`, and `docs/agents/reviews/`; `postmortem/` contains the postmortem workflow.
 - Top-level `README.md` documents the project's purpose and how to use the skill.
@@ -221,6 +222,8 @@ This repo is a **skill-development environment** for `skills/google-analytics-im
 - Add a new line only when the user corrects the agent and the correction is likely to recur.
 - Tighten an existing line instead of adding a near-duplicate.
 - Delete stale learnings when the underlying issue goes away.
+- Use each project's pinned local runtime manager for project commands: `.venv` for Python, Volta for Node/npm when configured.
+- When changing this template, update `Template version` in `AGENTS.md` to the change date.
 
 When the user corrects your approach, append a one-line rule here before ending the session. Write it concretely ("Always use X for Y"), never abstractly ("be careful with Y"). If an existing line already covers the correction, tighten it instead of adding a new one. Remove lines when the underlying issue goes away (model upgrades, refactors, process changes).
 
