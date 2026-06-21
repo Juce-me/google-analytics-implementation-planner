@@ -38,9 +38,9 @@ non-regulated audience.
 If the product targets children, health data, education records, or
 regulated finance, stop before using this template and escalate.
 
-**Vendor context:** GA4 property type (web / app / both), existing GTM,
-existing BigQuery export, paid acquisition budget. This determines the
-architecture in §2.
+**Vendor context:** target GA4 property (or new property to create), data
+streams (web / app / both), existing GTM, existing BigQuery export, paid
+acquisition budget. This determines the architecture in §2.
 
 **GTM web decision:** <yes/no>. If yes: why GTM is needed, who owns
 container changes, environment/container ids, and whether ecommerce is
@@ -316,8 +316,9 @@ CI drift checks:
 - Container version creation allowed: `false` by default.
 - Manual values still required:
   - GA4 property id
-  - Stream id
-  - Measurement id
+  - Measurement ID / Google tag ID (`G-...`) for web setup
+  - Stream resource id only when Admin API automation mutates
+    stream-level settings
   - GTM account id
   - GTM container id
   - Server container id, if sGTM is selected

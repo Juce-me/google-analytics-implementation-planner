@@ -101,11 +101,21 @@ data must drive. Examples:
 - "which locales to keep translating"
 - "did the redesign change engagement"
 
-Capture: audience (minors? EEA/UK/Switzerland? B2B?), GA4 property type
-(web stream, app stream, both), whether GTM web will be used (why,
-owner, container), other infrastructure (gtag.js, Firebase SDK, sGTM,
-BigQuery), and hard constraints (server-side-only? no client JS?
-privacy-by-default?).
+Capture: audience (minors? EEA/UK/Switzerland? B2B?), target GA4
+property (or the need to create a new one), data streams (web, app, or
+both), whether GTM web will be used (why, owner, container), other
+infrastructure (gtag.js, Firebase SDK, sGTM, BigQuery), and hard
+constraints (server-side-only? no client JS? privacy-by-default?).
+
+If the user has not supplied a target GA4 property, make the setup
+runbook create a new GA4 property and the required data stream. Do not
+use Universal Analytics "profile" terminology. For web/GTM setup, ask
+for the web data stream's Measurement ID / Google tag ID (`G-...`) before
+producing paste-ready Google tag or GTM tag instructions; if the property
+will be created during setup, leave an explicit `G-...` placeholder and a
+step to copy the generated Measurement ID. Classic GTM web configuration
+does not need a `web_stream_id`; use stream resource ids only when Admin
+API automation explicitly modifies stream-level settings.
 
 ### 1.2. Required source-inspection checklist
 
@@ -210,7 +220,9 @@ The common patterns and when each is right:
 - **GTM web container** — use only when needed. Normal web analytics uses
   one `userevent` dataLayer event name with two filtered reusable
   trigger/tag paths; send one `dataLayer.push` per analytics occurrence,
-  not a batch of multiple GA4 events; ecommerce stays separate.
+  not a batch of multiple GA4 events; ecommerce stays separate. The GTM
+  Google tag / GA4 Event tags send to the web data stream's Measurement
+  ID / Google tag ID (`G-...`), not a GA4 web stream resource id.
 - **Measurement Protocol augmentation** — sends server/offline events
   into an existing web/app stream, can recover critical events ad
   blockers drop, and can enrich with server-only truth. It requires the
@@ -368,10 +380,12 @@ from [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-templat
 
 The MCP spec is machine-readable desired state. It must not contain
 rationale. It may only contain approved values from the design plan and
-setup runbook: GA4 property/stream placeholders, GTM account/container
-placeholders, custom dimensions, custom metrics, key events, built-in
-variables, data-layer variables, triggers, tags, optional server-side GTM
-settings, validation rules, and publish gate configuration.
+setup runbook: GA4 property placeholders, Measurement ID / Google tag ID,
+stream resource placeholders only for explicit stream-level Admin API
+operations, GTM account/container placeholders, custom dimensions, custom
+metrics, key events, built-in variables, data-layer variables, triggers,
+tags, optional server-side GTM settings, validation rules, and publish
+gate configuration.
 
 Use concrete schema values wherever the MCP schema requires enums. For
 example, `target.environment` must be `dev`, `staging`, or `prod`, not a
@@ -506,6 +520,7 @@ to that plan, not a replacement for it.
   default.
 - MCP specs that invent events not present in the approved event catalog.
 - MCP specs that require one GTM trigger/tag per normal product event.
+- MCP specs that require `web_stream_id` for classic GTM web setup.
 - MCP specs that modify consent settings without explicit approval.
 - MCP specs that store full URLs with query strings as event parameters.
 

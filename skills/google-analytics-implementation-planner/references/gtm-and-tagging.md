@@ -1,6 +1,10 @@
 # GTM and tagging — when, which, why
 
-Authoritative docs (last checked: 2026-05-26):
+Authoritative docs (last checked: 2026-06-21):
+- CONFIRMED: <https://support.google.com/analytics/answer/9679158>
+- CONFIRMED: <https://support.google.com/analytics/answer/9304153>
+- CONFIRMED: <https://support.google.com/analytics/answer/9539598>
+- CONFIRMED: <https://support.google.com/tagmanager/answer/9442095>
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager>
 - CONFIRMED: <https://developers.google.com/tag-platform/tag-manager/datalayer>
 - CONFIRMED: <https://support.google.com/tagmanager/answer/7182738>
@@ -25,6 +29,26 @@ Authoritative docs (last checked: 2026-05-26):
 
 **Default to the leftmost option that meets the need.** Moving right is
 a real cost, both in build and in ops.
+
+## GA4/GTM object terminology
+
+Use GA4 terms, not Universal Analytics terms:
+
+- **GA4 property:** the reporting/configuration container for a logical
+  user base.
+- **Web data stream:** the website data source inside a GA4 property. It
+  owns the Measurement ID / Google tag ID, usually `G-...`.
+- **GTM web container:** the tag-management container on the website. Its
+  Google tag / GA4 Event tags send to the web data stream's Measurement
+  ID / Google tag ID.
+
+GA4 has no views. Avoid "profile" terminology in this skill; use
+property and data stream. If the user did not supply a GA4 property,
+create a new GA4 property and web data stream in the runbook. For classic
+GTM web setup, ask for the `G-...` Measurement ID / Google tag ID before
+producing paste-ready GTM tag configuration. Do not request
+`web_stream_id` for classic GTM web; stream resource ids are only needed
+when Admin API automation explicitly mutates stream-level settings.
 
 ## When gtag.js direct is enough
 

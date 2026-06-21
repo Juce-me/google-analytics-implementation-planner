@@ -21,6 +21,9 @@ Author: <your-handle>
 
 - [ ] Google account with Editor permission on the GA4 property (or
       create-property permission on the target organization).
+- [ ] Existing GA4 Measurement ID / Google tag ID (`G-...`) for web
+      setup, or permission to create a new GA4 property and web data
+      stream and copy the generated Measurement ID before tag setup.
 - [ ] Access to the codebase (commit + PR).
 - [ ] Access to the CMP admin panel (if applicable).
 - [ ] Secret-manager access to write the `PEPPER` for user-id hashing.
@@ -30,14 +33,20 @@ Author: <your-handle>
       <https://cloud.google.com/iam/docs/service-accounts-create>.
       Keep credentials out of docs and specs.
 
-## 1. Create / configure the GA4 property
+## 1. Create / configure the GA4 property and data stream
 
 Admin (gear icon, bottom left) → Property column.
 
-1. **Property → Property Details:** name, timezone, currency. (Currency
+1. If no target GA4 property was supplied, **Create → Property** first.
+   GA4 uses properties and data streams, not Universal Analytics
+   profiles.
+2. **Property → Property Details:** name, timezone, currency. (Currency
    here defines report currency — set even if you don't have ecommerce.)
-2. **Data Streams → Web**:
-   - Stream name, URL, stream id.
+3. **Data Streams → Web**:
+   - Stream name, URL, Measurement ID / Google tag ID (`G-...`).
+     Do not request `web_stream_id` for classic GTM web setup. Record a
+     stream resource id only if Admin API automation will mutate
+     stream-level settings.
    - Enhanced Measurement → toggle: keep ON for `scroll`, `outbound
      click`, `site search`, `video engagement`, `file download`.
      Keep automatic `page_view` only when the plan does not manually emit
@@ -47,19 +56,19 @@ Admin (gear icon, bottom left) → Property column.
      destinations.
    - Configure tag settings → Internal traffic → add IP rules for the
      office / VPN to exclude.
-3. **Data Streams → iOS / Android**:
+4. **Data Streams → iOS / Android**:
    - Register app stream and Firebase app id.
    - Install Firebase Analytics SDK.
    - Document automatic events, screen-reporting source of truth, and app
      debug mode.
    - If using MP augmentation, capture SDK-derived `app_instance_id`; do
      not mint it server-side.
-4. **Property → Reporting Identity:** choose Blended / Observed /
+5. **Property → Reporting Identity:** choose Blended / Observed /
    Device-based per plan §4.
-5. **Property → Data Settings → Data Retention:** 14 months (max on
+6. **Property → Data Settings → Data Retention:** 14 months (max on
    Standard; longer requires 360). Reset user data on new activity:
    ON.
-6. **Property → Data Settings → Data Collection → Google Signals:**
+7. **Property → Data Settings → Data Collection → Google Signals:**
    ON if marketing needs demographics & cross-device; OFF if audience
    includes minors or strict-privacy use cases.
 
@@ -192,7 +201,9 @@ GTM admin → Workspace.
 1. Create new container per environment. Never share across envs.
 2. Confirm the approved dataLayer contract uses `dataLayer.push({...})`,
    not `dataLayer(...)`, and that GTM web is intentionally selected.
-3. Tags → New → Google tag for base configuration.
+3. Tags → New → Google tag for base configuration. In **Tag ID**, enter
+   the web data stream's Measurement ID / Google tag ID (`G-...`).
+   Classic GTM web setup does not use `web_stream_id`.
 4. Create two filtered normal analytics Custom Event triggers and two
    reusable GA4 Event tags. Both triggers match dataLayer event name
    `userevent`; the filter chooses the pageview or user-event path.

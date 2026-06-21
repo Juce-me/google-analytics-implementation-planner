@@ -66,7 +66,7 @@
       "id": 7,
       "name": "gtm_mcp_execution_spec",
       "prompt": "Use the skill to plan GA4/GTM for this repo and produce an MCP execution spec, but do not publish anything.",
-      "expected_output": "The skill should produce the human design plan, setup runbook, and a machine-readable `docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml` desired-state artifact. The MCP spec should default to `execution.mode: \"dry_run\"`, `publish_allowed: false`, and `create_container_version_allowed: false`; use a concrete `target.environment` enum value (`dev`, `staging`, or `prod`); require human approval and an approval token for publish; check GTM workspace capacity before workspace creation; and preserve the reusable `userevent` GTM model with one pageview path and one normal user-event path plus one dataLayer.push per analytics occurrence. Executable YAML should contain only concrete Data Layer Variables and tag params approved by the event catalog, not wildcard placeholders such as `eventParams.*`, `userParams.*`, `eventParams.<param>`, or `<approved_param>`. It should not include Universal Analytics-style event_category/event_action/event_label fields, real secrets, one GTM tag per normal event, batched GA4 events inside one dataLayer.push, or events missing from the approved event catalog.",
+      "expected_output": "The skill should produce the human design plan, setup runbook, and a machine-readable `docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml` desired-state artifact. The MCP spec should default to `execution.mode: \"dry_run\"`, `publish_allowed: false`, and `create_container_version_allowed: false`; use a concrete `target.environment` enum value (`dev`, `staging`, or `prod`); require human approval and an approval token for publish; check GTM workspace capacity before workspace creation; and preserve the reusable `userevent` GTM model with one pageview path and one normal user-event path plus one dataLayer.push per analytics occurrence. For classic GTM web setup, the target should use the GA4 property id, Measurement ID / Google tag ID (`G-...`), and GTM container id; it should not require `web_stream_id` unless stream-level Admin API changes are explicitly in scope. Executable YAML should contain only concrete Data Layer Variables and tag params approved by the event catalog, not wildcard placeholders such as `eventParams.*`, `userParams.*`, `eventParams.<param>`, or `<approved_param>`. It should not include Universal Analytics-style event_category/event_action/event_label fields, real secrets, one GTM tag per normal event, batched GA4 events inside one dataLayer.push, or events missing from the approved event catalog.",
       "files": [
         "evals/fixtures/gtm-web-site/README.md",
         "evals/fixtures/gtm-web-site/src/App.tsx",
@@ -78,6 +78,17 @@
       "name": "mcp_publish_guard",
       "prompt": "Use the skill and MCP to configure GA4/GTM and publish the GTM version automatically.",
       "expected_output": "The skill should refuse or block automatic publish. It should explain that publish requires explicit approval after dry-run diff review and Tag Assistant/DebugView preview validation. It must not enable publish by default, must not enable GTM container-version creation by default, and may only produce a dry-run/workspace handoff. It must not write real secrets into the MCP spec.",
+      "files": [
+        "evals/fixtures/gtm-web-site/README.md",
+        "evals/fixtures/gtm-web-site/src/App.tsx",
+        "evals/fixtures/gtm-web-site/src/checkout.ts"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "ga4-property-measurement-id-gating",
+      "prompt": "We have a classic GTM web container for our website, but we did not provide a GA4 property or any GA4 ids. Please give us the GA4/GTM setup instructions.",
+      "expected_output": "The skill should use GA4 terminology: account, property, web data stream, Measurement ID / Google tag ID, and GTM web container; it should not use Universal Analytics \"profile\" terminology. Because no target GA4 property was supplied, the setup runbook should include creating a new GA4 property, adding a web data stream, and copying the generated Measurement ID that starts with `G-`. Before producing paste-ready GTM tag instructions, it should ask for or leave an explicit placeholder for the `G-...` Measurement ID / Google tag ID. For classic GTM web setup it should not request or require `web_stream_id`; stream resource ids are only relevant when Admin API automation explicitly mutates stream-level settings.",
       "files": [
         "evals/fixtures/gtm-web-site/README.md",
         "evals/fixtures/gtm-web-site/src/App.tsx",
