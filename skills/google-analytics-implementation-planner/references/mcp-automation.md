@@ -10,8 +10,12 @@ The MCP execution spec is the handoff between the planner and a separate,
 custom, write-capable MCP server. The planner owns approved desired state:
 target placeholders, source-artifact links, GA4 Admin desired state, GTM
 web desired state, optional sGTM placeholders, validation rules, and
-publish gates. The MCP server owns safe application of that desired state
-against Google Analytics 4 and Google Tag Manager.
+publish gates. For classic GTM web setup, the target is the GA4 property,
+the web data stream Measurement ID / Google tag ID (`G-...`), and the GTM
+web container. Do not require `web_stream_id` unless the approved desired
+state includes stream-level Admin API mutations. The MCP server owns safe
+application of that desired state against Google Analytics 4 and Google
+Tag Manager.
 
 The official Google Analytics MCP server is read-only for Analytics
 reporting and exploration. It must not be described as able to edit GA4 or
@@ -99,13 +103,15 @@ approval:
 
 ## Sources
 
-Authoritative docs last checked: 2026-05-29.
+Authoritative docs last checked: 2026-06-21.
 
 - CONFIRMED: https://developers.google.com/tag-platform/tag-manager/api/v2
 - CONFIRMED: https://developers.google.com/tag-platform/tag-manager/api/reference/rest/v2/accounts.containers.workspaces/create_version
 - CONFIRMED: https://support.google.com/tagmanager/answer/7059647
 - CONFIRMED: https://developers.google.com/analytics/devguides/config/admin/v1
 - CONFIRMED: https://developers.google.com/analytics/devguides/MCP
+- CONFIRMED: https://support.google.com/analytics/answer/9539598
+- CONFIRMED: https://support.google.com/tagmanager/answer/9442095
 - CONFIRMED: https://support.google.com/tagmanager/answer/6107056
 - CONFIRMED: https://support.google.com/tagmanager/answer/10718549
 - CONFIRMED: https://cloud.google.com/iam/docs/service-accounts-create

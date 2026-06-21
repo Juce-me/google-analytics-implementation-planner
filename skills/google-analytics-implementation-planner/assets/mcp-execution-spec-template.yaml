@@ -9,7 +9,8 @@ version: 1
 target:
   environment: "dev"
   ga4_property_id: "properties/000000000"
-  web_stream_id: "properties/000000000/dataStreams/0000000000"
+  # Classic GTM web setup uses the Measurement ID / Google tag ID.
+  # Add a stream resource id only for explicit stream-level Admin API changes.
   measurement_id: "G-XXXXXXX000"
   gtm_account_id: "accounts/0000000"
   gtm_web_container_id: "accounts/0000000/containers/0000000"
@@ -36,7 +37,7 @@ preflight:
     - "gtm_workspace_capacity_checked"
     - "gtm_current_state_read"
     - "ga4_current_state_read"
-    - "measurement_id_matches_target_stream"
+    - "measurement_id_matches_target_property_or_supplied_stream"
     - "no_conflicting_workspace_changes_detected"
 
 ga4_admin:
@@ -186,7 +187,7 @@ validation:
     - "gtm_workspace_capacity_checked"
     - "gtm_workspace_created_before_changes"
     - "gtm_preview_created_before_publish"
-    - "measurement_id_matches_target_stream"
+    - "measurement_id_matches_target_property_or_supplied_stream"
     - "data_layer_timing_validated"
     - "consent_settings_not_modified_unless_approved"
     - "publish_blocked_without_explicit_approval"
