@@ -19,6 +19,24 @@ Author: <your-handle>
 
 ## 0. Prerequisites
 
+**Tier:** <1 basic — GA4 direct | 2 advanced — GTM web | 3 hyper —
+server-side>, per design plan §2. Read only the sections that apply:
+
+| Section | Tier 1 | Tier 2 | Tier 3 |
+| --- | --- | --- | --- |
+| 1 property & data stream, 1a tag/SDK install | yes | yes | yes |
+| 2 custom definitions, 3 key events | yes | yes | yes |
+| 4 Measurement Protocol secret | — | — | yes |
+| 5 Consent Mode v2 (web), 5a Firebase app consent | yes | yes | yes |
+| 6 GTM web container | — | yes | yes, if the client tier is 2 |
+| 6a MCP automation handoff | if requested | if requested | if requested |
+| 7 server-side GTM container | — | — | yes, if sGTM was chosen |
+| 8 validation, 10 operations, 11 rollback | yes | yes | yes |
+| 9 BigQuery export | only if the plan asked for it | | |
+
+Any `G-<paste-from-admin>`-style placeholder below must be replaced with a
+real value before the step is executed. Do not substitute a guess.
+
 - [ ] Google account with Editor permission on the GA4 property (or
       create-property permission on the target organization).
 - [ ] Existing GA4 Measurement ID / Google tag ID (`G-...`) for web
@@ -72,6 +90,34 @@ Admin (gear icon, bottom left) → Property column.
    ON if marketing needs demographics & cross-device; OFF if audience
    includes minors or strict-privacy use cases.
 
+## 1a. Install the tag or SDK (tier 1; skip the web half at tier 2)
+
+Web, tier 1 — the Google tag goes in the global layout, once, on every
+page, after the synchronous consent-default snippet:
+
+```html
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-<paste-from-admin>"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-<paste-from-admin>');
+</script>
+```
+
+- [ ] Mount point matches design plan §2 Framework wiring: `<file:line>`.
+- [ ] If the plan sends manual pageviews, add `{ send_page_view: false }`
+      to the `config` call — and repeat it on every page, since the
+      setting does not persist across pages.
+- [ ] No second Google tag anywhere in the app (grep for
+      `googletagmanager.com/gtag/js`).
+
+App, all tiers — install the Firebase Analytics SDK per the plan, confirm
+automatic screen reporting is the screen-view source of truth, and wire
+`setUserId` / `setConsent` / `setAnalyticsCollectionEnabled`.
+
+At tier 2 the container installs the Google tag instead; do not do both.
+
 ## 2. Register custom definitions
 
 Admin → Property → **Custom Definitions**.
@@ -115,7 +161,7 @@ that have never fired yet:
 
 Per plan §6: `sign_up`, `purchase`, `<other>`.
 
-## 4. Measurement Protocol API secret (if server-side)
+## 4. Measurement Protocol API secret (tier 3 only)
 
 Admin → Data Streams → <stream> → Measurement Protocol API secrets →
 **Create**.
@@ -156,7 +202,7 @@ the debug endpoint before enabling live sends. Web streams use
 `measurement_id` + `client_id` retrieved with `gtag('get')`; app streams
 use `firebase_app_id` + SDK-derived `app_instance_id`.
 
-## 5. Consent Mode v2 (web)
+## 5. Consent Mode v2 (web — all tiers)
 
 Place the **default snippet** inline in `<head>` of every server-
 rendered page, BEFORE any tag loader. Example:
@@ -181,7 +227,7 @@ traffic the choice is documented in plan §7.
 Wire your CMP's "Accept" / "Reject" callbacks to call
 `gtag('consent', 'update', {…})` with the user's choice.
 
-## 5a. Firebase app consent (iOS/Android)
+## 5a. Firebase app consent (app streams — all tiers)
 
 For app streams, use Firebase SDK controls rather than the web snippet:
 
@@ -194,7 +240,7 @@ For app streams, use Firebase SDK controls rather than the web snippet:
 4. Verify denied consent returns no `app_instance_id` for MP augmentation
    and sends no app analytics events in basic mode.
 
-## 6. (If using GTM) container setup
+## 6. GTM web container setup (tier 2 only)
 
 GTM admin → Workspace.
 
@@ -221,6 +267,9 @@ GTM admin → Workspace.
    configuration parameter `send_page_view` to `false` everywhere the
    base tag loads, and disable duplicate Enhanced Measurement or
    history-change pageviews for SPA route changes that the app emits.
+   For a SPA whose app cannot push `userevent` pageviews, use the
+   container-only History Change variant in
+   `references/tier-2-gtm-web.md` instead — never both.
 5. If ecommerce is active, configure it separately:
 
    ```js
@@ -291,7 +340,7 @@ Destructive changes stay disabled unless separately approved. Consent
 settings must not be modified unless explicitly approved in the design
 plan.
 
-## 7. (If using sGTM) server-side container
+## 7. Server-side GTM container (tier 3, sGTM path only)
 
 1. Create server container in GTM.
 2. Tagging Server → Provisioning → Manually provision (Cloud Run /
@@ -324,6 +373,14 @@ plan.
    `engagement_time_msec` set to a positive number.
 3. Fire each event in plan §5. Confirm it appears within seconds with
    ALL expected parameters and correct types.
+
+### `page_view` count (every web tier)
+
+Navigate five routes in the app. DebugView must show exactly five
+`page_view` events — not ten. Then reload a deep link (one event) and press
+back (one event). If any count is doubled, two sources are active: check
+Enhanced Measurement → Page views → advanced settings against the plan's
+§2 Framework wiring decision.
 
 ### Measurement Protocol debug endpoint
 

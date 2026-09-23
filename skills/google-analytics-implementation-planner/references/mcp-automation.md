@@ -1,5 +1,20 @@
 # MCP automation handoff
 
+This file is the single owner of MCP rules. `SKILL.md` states only the
+non-negotiables (dry-run default, publish and container-version gates, no
+secrets, concrete approved values only) and points here.
+
+## Which tiers an MCP spec can configure
+
+- **Tier 1 (GA4 direct)** — property, data stream, custom dimensions/metrics, and
+  key events via the GA Admin API. There is no container to automate; the Google
+  tag or Firebase SDK install stays a code change in the repo.
+- **Tier 2 (GTM web)** — everything above plus GTM built-in variables, data-layer
+  variables, the two reusable triggers, and the two reusable GA4 event tags.
+- **Tier 3 (server-side)** — optional sGTM container settings and a Measurement
+  Protocol secret *request*. Queue, worker, and backend send code are never
+  automated by the spec; they are implementation work in the design plan.
+
 ## Boundary
 
 This repo is a planner skill. It decides what GA4/GTM configuration should
@@ -96,10 +111,23 @@ approval:
   paths, one `dataLayer.push` per analytics occurrence, and no batched
   GA4 events inside a single push; ecommerce stays separate only when
   deliberately active.
-- No secrets in specs.
+- No secrets or real API secret values in specs.
 - No full URLs with query strings as event parameters or custom
   dimensions.
 - No consent changes unless explicitly approved in the design plan.
+- No publish and no GTM container-version creation enabled by default.
+- No events that are absent from the approved event catalog.
+- No `web_stream_id` requirement for classic GTM web setup; the target is the
+  GA4 property, the Measurement ID / Google tag ID (`G-...`), and the GTM
+  container.
+- No wildcard or unresolved placeholders in executable YAML — `eventParams.*`,
+  `userParams.*`, `eventParams.<param>`, `<approved_param>`. Ambiguous values
+  stay marked as operator-supplied placeholders, never guessed.
+- No combined placeholder strings where the schema requires an enum;
+  `target.environment` is `dev`, `staging`, or `prod`.
+- No loose parsing of Markdown tables into executable config. If a value is
+  ambiguous in the plan, it is a placeholder for the operator, not a value for
+  the spec.
 
 ## Sources
 

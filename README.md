@@ -15,7 +15,15 @@ Superpowers.
 ## What this skill does
 
 Given a repo and a vague analytics ask ("add GA4", "what should we
-track", "set up Google Analytics"), the skill produces:
+track", "set up Google Analytics"), the skill first **asks** — a blocking
+five-block intake questionnaire (goal and decisions, audience and legal,
+platform and stack, tier and ownership, existing GA4/GTM state), one block
+per message. Nothing is produced while a required answer is missing, and
+nothing in the output is inferred: every value traces to the user, to the
+repo with a `file:line` citation, or to a cited vendor doc. See
+[`assets/intake-questionnaire.md`](skills/google-analytics-implementation-planner/assets/intake-questionnaire.md).
+
+Then it produces:
 
 1. **A design plan** — the **why**. Decisions the data must drive, the
    chosen architecture, the event catalog (with `file:line` anchors),
@@ -35,11 +43,37 @@ The plan and runbook are kept separate by design — they drift if merged.
 The durable `docs/README_ANALYTICS.md` contract and `AGENTS.md`
 analytics-impact rule keep future features aligned after launch.
 
+## Three tiers, one per plan
+
+The tier is the transport. It is chosen by the user, recorded in the plan,
+and never inferred. Platform (web, React SPA, iOS/Android app, backend) is
+a separate question — any platform runs at any tier.
+
+| Tier | What it is | Right when | Ops cost |
+| --- | --- | --- | --- |
+| **1 — basic** | GA4 direct: the Google tag (`gtag.js`) on web, the Firebase Analytics SDK on app | engineering owns instrumentation, one property, no ad pixels | none |
+| **2 — advanced** | GTM web container + the `userevent` dataLayer contract | non-engineers must ship tags without a deploy | container ownership |
+| **3 — hyper** | Server-side: sGTM tagging server and/or Measurement Protocol | ad-blocker loss costs more than the infra, or the server holds the truth | you run infra |
+
+Tier 2 contains tier 1's GA4 property work; tier 3 always layers on top of
+a client tier and never replaces automatic collection. Each tier reference
+ends with an explicit upgrade path — what carries over, what changes shape,
+what must be migrated, and the cost delta.
+
+**React is a first-class target.** The skill decides and records the mount
+point, the single owner of `page_view` (Enhanced Measurement history events
+or a manual router send — never both), and the consent gate, for Next.js
+App Router, Next.js Pages Router, Vite + react-router, React Native +
+Firebase, Vue/Svelte, and Turbo/htmx.
+
 ## What this skill is NOT
 
 - Not a generic "track everything" event list. Every event in the
   output traces to a stated decision; surfaces with no decision get
   cut.
+- Not a one-shot generator. It asks first and blocks on missing answers,
+  because an invented property id or consent posture becomes a production
+  defect that GA4 will not let you un-collect.
 - Not a vendor-agnostic planner. This skill is **GA4-deep**. Other
   vendors (Segment, PostHog, Plausible, Amplitude) need a different
   skill. Mentions of those vendors trigger a scope check, not a
@@ -66,21 +100,24 @@ google-analytics-skill/
     └── google-analytics-implementation-planner/
         ├── agents/
         │   └── openai.yaml     # Codex / OpenAI skill UI metadata
-        ├── SKILL.md           # Skill entry point (frontmatter + body)
+        ├── SKILL.md           # Skill entry point: intake gate, tier choice, process
         ├── references/        # Deep-dive docs the skill points to on demand
+        │   ├── tier-1-ga4-direct.md
+        │   ├── tier-2-gtm-web.md
+        │   ├── tier-3-server-side.md
+        │   ├── framework-integration.md
         │   ├── ga4-event-schema.md
-        │   ├── ga4-server-side.md
-        │   ├── gtm-and-tagging.md
+        │   ├── identity-sessions.md
         │   ├── mcp-automation.md
         │   ├── privacy-consent.md
-        │   ├── identity-sessions.md
         │   ├── reporting-config.md
         │   └── surface-checklist.md
-        ├── assets/            # Output templates
-        │   ├── analytics-contract-template.md
-        │   ├── mcp-execution-spec-template.yaml
+        ├── assets/            # Intake script + output templates
+        │   ├── intake-questionnaire.md
         │   ├── plan-template.md
         │   ├── runbook-template.md
+        │   ├── analytics-contract-template.md
+        │   ├── mcp-execution-spec-template.yaml
         │   └── forbidden-keys.md
         └── evals/
             └── evals.json     # Starter test prompts for the skill-creator loop
@@ -142,6 +179,20 @@ and project skills from `.claude/skills/<skill>/SKILL.md`; see the
 
 ## Usage
 
+### What to expect on the first run
+
+The first response is questions, not a plan. Expect up to five short
+question blocks; answer them in any level of detail you have. Three answers
+are always acceptable:
+
+- the real answer;
+- "you decide" — the skill recommends one and records your confirmation;
+- "I don't know yet" — the skill marks the item `OPEN`, says exactly what it
+  blocks, and continues with everything that doesn't depend on it.
+
+What you will not get is a plausible-looking guess. If a plan arrives with a
+`G-` Measurement ID you never supplied, that is a bug worth reporting.
+
 ### MCP automation handoff
 
 When the user asks for MCP-based GA4/GTM configuration, the skill still
@@ -200,11 +251,15 @@ This repo is itself a skill-development environment. The
 4. Repeat until the with-skill outputs are reliably better than the
    baseline.
 
-The starter `evals.json` contains eight realistic prompts: greenfield SaaS,
+`evals.json` contains twelve realistic prompts: greenfield SaaS,
 child-audience escalation, ecommerce migration to server-side,
-broad-vendor scope guarding, React Native/Firebase app streams, and a
-GTM web contract case, plus MCP execution-spec and publish-guard cases.
-Extend it as the skill matures.
+broad-vendor scope guarding, React Native/Firebase app streams, a GTM web
+contract case, MCP execution-spec and publish-guard cases, Measurement-ID
+gating, and three that guard the new behavior — intake-gate blocking
+(a bare "add GA4" must produce questions, not a plan), Next.js App Router
+tier-1 wiring (the `page_view` double-count must be resolved explicitly),
+and tier pushback when the requested tier is disproportionate. Extend it as
+the skill matures.
 
 ## Contributing
 
