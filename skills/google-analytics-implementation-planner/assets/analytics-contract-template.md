@@ -8,8 +8,17 @@ future feature work updates.
 
 - Analytics vendor: Google Analytics 4 / Google Tag Manager / Measurement
   Protocol.
-- Active architecture: <gtag.js direct | Firebase Analytics SDK direct |
-  GTM web | Measurement Protocol | sGTM | hybrid, with endpoint/path>.
+- **Active tier: <1 basic — GA4 direct | 2 advanced — GTM web | 3 hyper —
+  server-side>**, with endpoint/path: <exact endpoint or container>.
+  Changing tier is a plan-level decision, not a feature PR. Do not add a
+  GTM tag to a tier-1 app or a `gtag` send to a tier-2 app.
+- Platform(s): <web / React SPA and its router / iOS+Android app /
+  backend>.
+- `page_view` owner: <Enhanced Measurement history events | manual router
+  send at `file:line`>. Exactly one. The other source is disabled by
+  <mechanism>. Any PR that touches routing re-checks this.
+- Analytics module boundary: `<file:line>`. Components never call `gtag`,
+  `dataLayer.push`, or the Firebase SDK directly.
 - Privacy floor: no raw email, name, phone, free text, token, full URL
   query, or explicit IP/user-agent/referrer params or payload fields leave
   the app. Passive SDK/browser metadata is documented separately.
@@ -52,7 +61,7 @@ Never add bulk custom definitions or boolean presence dimensions such as
 
 ## GTM web contract
 
-If the active architecture uses GTM web, normal analytics events must use
+If the active tier is 2 (GTM web), normal analytics events must use
 one dataLayer event name, `userevent`, with approved filtered reusable
 GTM trigger/tag paths. Each `dataLayer.push` represents one analytics
 occurrence; do not batch multiple GA4 events into one push. A normal

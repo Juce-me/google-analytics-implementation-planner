@@ -1,7 +1,7 @@
 interface:
   display_name: "Google Analytics Planner"
-  short_description: "Codebase-grounded GA4 plans and MCP handoffs"
-  default_prompt: "Use $google-analytics-implementation-planner to design a privacy-first GA4 instrumentation plan, setup runbook, durable analytics contract, future-feature analytics rule, and optional MCP execution handoff for this repo."
+  short_description: "Tiered, codebase-grounded GA4 plans — asks before it plans"
+  default_prompt: "Use $google-analytics-implementation-planner to design a privacy-first GA4 instrumentation plan for this repo: run the intake questionnaire first, pick a tier (1 GA4 direct, 2 GTM web, 3 server-side), then produce the design plan, setup runbook, durable analytics contract, future-feature analytics rule, and optional MCP execution handoff."
 
 policy:
   allow_implicit_invocation: true

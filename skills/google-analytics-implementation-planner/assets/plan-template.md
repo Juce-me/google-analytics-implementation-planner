@@ -22,6 +22,32 @@ track. The reader who reads only this should know whether to read on.
 anchors, and implementation order. GA4 Admin, GTM, Firebase, Measurement
 Protocol, and sGTM configuration click-paths live in the setup runbook.
 
+## 0.5 Intake record
+
+Every value below came from the user, the repo (with a `file:line`
+citation), or a recommendation the user explicitly confirmed. Nothing here
+was inferred. Question ids match
+`assets/intake-questionnaire.md`.
+
+| # | Question | Answer | Source |
+| --- | --- | --- | --- |
+| Q1.1 | Decisions the data must drive | D1 …, D2 …, D3 … | user |
+| Q2.2 | EEA/UK/CH users | <yes/no> | user |
+| Q2.6 | Consent mode | basic | user |
+| Q3.2 | Framework / router | <e.g. Next.js 15 App Router> | repo:`package.json:14` |
+| Q3.3 | Navigation model | <full page load / History SPA / hash / Turbo> | repo:`<file:line>` |
+| Q4.1 | Tier | <1 basic / 2 advanced / 3 hyper> | user |
+| Q4.5 | Applied by MCP or human | <mcp / human> | user |
+| Q5.1 | GA4 property | <id or "create new"> | user |
+| Q5.2 | Measurement ID | `G-<paste-from-admin>` | OPEN — property not created |
+
+**Open items and what each blocks**
+
+- <Qx.y> — blocks <the smallest thing it actually blocks>.
+
+If a required answer is still open, this plan is not finished. Say so here
+rather than filling the gap with a plausible value.
+
 ## 1. Goal & decisions
 
 What product/business decisions will this data drive? List 3–7. Each
@@ -46,16 +72,26 @@ acquisition budget. This determines the architecture in §2.
 container changes, environment/container ids, and whether ecommerce is
 active.
 
-## 2. Architecture (the deliberate choice)
+## 2. Architecture — tier declaration
 
-State the chosen pattern and the alternatives rejected:
+**Tier:** <1 basic — GA4 direct | 2 advanced — GTM web | 3 hyper —
+server-side>. Chosen by the user (Q4.1), not inferred.
 
-- [ ] gtag.js client-side direct
-- [ ] Firebase Analytics SDK direct (iOS/Android app stream)
-- [ ] GTM web container
-- [ ] Measurement Protocol augmentation
-- [ ] Server-side GTM (sGTM)
-- [ ] Hybrid: <which surfaces go where>
+**Platform(s) in scope:** <web / React SPA / iOS+Android app / backend>.
+Platform is independent of tier.
+
+**Tiers rejected, with the cost delta:**
+
+| Tier | Rejected because | Cost delta if we changed our mind |
+| --- | --- | --- |
+| <n> | <one line> | <build + ops> |
+
+**Tier 3 only — what it layers on:** <tier 1 or 2 underneath, and which
+named server/offline events go through Measurement Protocol or sGTM>. Tier
+3 augments automatic collection; it never replaces it.
+
+**Upgrade path from this tier:** <what carries over unchanged, what changes
+shape, what must be migrated deliberately — see the tier reference>.
 
 **Selected endpoint/path and payload shape:** <exact endpoint, path,
 client/server sender, and payload contract. For example:
@@ -64,7 +100,7 @@ Measurement Protocol body, or `gtag('event', name, params)` for browser
 events, or Firebase SDK `logEvent` for app events. For EU MP collection,
 consider `https://region1.google-analytics.com/mp/collect?...`.>
 
-### GTM web dataLayer contract (if selected)
+### GTM web dataLayer contract (tier 2 only — delete this section at tier 1)
 
 Normal web analytics uses one dataLayer event name, `userevent`, with two
 filtered reusable GTM trigger/tag paths. GTM fires on the top-level
@@ -114,7 +150,22 @@ page identity, and map `userParams.page_location` only when it is a full
 canonical sanitized URL that the built-in cannot provide.
 
 **Why this and not the others:** one paragraph naming the cost/benefit
-deltas. Reference `references/gtm-and-tagging.md` decision matrix.
+deltas. Reference the tier table in `SKILL.md` §2 and the "Choose this tier
+when" section of the tier reference.
+
+### Framework wiring
+
+Three answers, per surface in scope. See
+`references/framework-integration.md`.
+
+| Concern | Decision | Anchor |
+| --- | --- | --- |
+| Tag / container mount point | <where the tag loads, exactly once> | `<file:line>` |
+| Consent default snippet | synchronous, above the tag | `<file:line>` |
+| `page_view` owner | <Enhanced Measurement history events \| manual router send> — **one only** | `<file:line>` |
+| The other `page_view` source | disabled how: <`send_page_view: false` / EM advanced setting cleared> | `<file:line or admin path>` |
+| Analytics module boundary | all component sends route through here | `<file:line>` |
+| App screens (if app stream) | <automatic SDK reporting \| manual, and why> | `<file:line>` |
 
 **Reliability rules:**
 
@@ -358,6 +409,9 @@ One commit per step. The implementer follows this list top to bottom.
 - [ ] Consent-denied test: basic mode sends zero third-party analytics
       calls; advanced mode sends only approved cookieless pings.
 - [ ] Minor / age-unclassified test: zero analytics sends.
+- [ ] `page_view` ownership test: five navigations produce exactly five
+      `page_view` events; deep-link reload and back button each produce
+      one. The disabled source stays disabled.
 - [ ] Exact event assertions for each critical event.
 - [ ] Internal contract and GTM dataLayer assertions check
       `event: "userevent"` where GTM is used, plus

@@ -7,7 +7,10 @@ description: >
   Manager, server-side GTM, or Measurement Protocol: "add analytics",
   "add GA4", "set up Google Analytics", "what should we track",
   "traffic-source reporting", "feature usage measurement", "funnel
-  analysis", "adoption tracking", "telemetry", or "product tracking".
+  analysis", "adoption tracking", "telemetry", "product tracking", or
+  wiring GA4 into a React / Next.js / React Native / SPA codebase.
+  Plans one of three deliberate tiers — basic (GA4 direct), advanced
+  (GTM web container), hyper (server-side sGTM / Measurement Protocol).
   Also trigger for broader analytics asks mentioning
   Segment, PostHog, Plausible, or similar tools so you can confirm vendor
   scope, but do not produce non-GA4 implementation plans from this skill.
@@ -19,564 +22,431 @@ description: >
 # Google Analytics Implementation Planner
 
 You produce GA4 plans an engineer can implement without follow-up questions,
-that a privacy reviewer can sign off, and that survive the app growing. You
-do NOT write generic "track button clicks" lists. Every plan is grounded in
-(a) the actual product surface, (b) a stated decision the data must drive,
-(c) the real codebase (file:line anchors), and (d) the live GA4 / GTM /
-Measurement Protocol docs.
+that a privacy reviewer can sign off, and that survive the app growing. You do
+NOT write generic "track button clicks" lists. Every plan is grounded in (a) the
+user's answers, (b) the real codebase (`file:line` anchors), and (c) the live
+GA4 / GTM / Measurement Protocol docs. Nothing is grounded in inference.
 
-This skill separates decisions, configuration, and post-launch rules:
-**design plan** (why + implementation order), **setup runbook** (how),
-**durable analytics contract** (future feature work), and, when requested,
-an **MCP execution spec** (machine-readable desired state for a separate
-MCP server).
+Artifacts, always separate: **design plan** (why + implementation order),
+**setup runbook** (how), **durable analytics contract** (future feature work),
+and, when requested, an **MCP execution spec** (machine-readable desired state
+for a separate MCP server).
 
 ## Scope guard
 
 This skill is GA4-deep. If the user asks for Segment, PostHog, Plausible,
-Amplitude, or a vendor-agnostic CDP plan, first confirm whether GA4/GTM is
-still the implementation target. If not, stop and recommend a separate
+Amplitude, or a vendor-agnostic CDP plan, first confirm whether GA4/GTM is still
+the implementation target. If not, stop and recommend a separate
 vendor-specific skill instead of stretching this one.
 
 ## 0. First principles (non-negotiable)
 
-1. **Tie every event to a decision.** Before listing anything, ask: "What
-   keep / improve / drop / prioritize decision will this data drive?" If an
-   event answers no decision, don't collect it. This is both data
-   minimization (privacy) and anti-bloat.
-2. **Never trust analytics folklore — validate against GA4's live docs.**
-   GA4 behavior changes and is widely misremembered. Verify, with
-   citations, every claim about: reserved vs recommended event names,
-   `gtag.js` vs Measurement Protocol shape, currency/units rules,
-   parameter limits (name/value length, params-per-event, custom-dimension
-   caps), identity/session semantics, Consent Mode v2 requirements,
-   beacon/header constraints, region/data-residency reality, Admin API
-   user-deletion behavior.
-   Mark each claim CONFIRMED / REFUTED / PARTIAL / NOT-FOUND with a source
-   URL. Do not repeat a claim you couldn't verify. See
-   [references/ga4-event-schema.md](references/ga4-event-schema.md) for
-   the live caps and reserved-name table to compare against.
-3. **Anchor to the real codebase.** Read the source. Cite `file:line` for
-   every place an event fires, every route, every migration, every config
-   touch. A plan that wasn't written with the source tree open is a guess.
-4. **Privacy is the floor, not a feature.** No raw email/name/IP/free-text/
-   tokens, or explicit IP/user-agent/referrer params reach Google. Browser
-   and app SDKs can still transmit passive headers and connection metadata;
-   document vendor behavior instead of overclaiming "nothing leaves." Maintain
-   an explicit forbidden-keys list (exact names + suffix/prefix wildcards +
-   value-shape regexes for emails, URLs, tokens). Scrub at the source AND at
-   the processing layer (defense in depth). See
-   [references/privacy-consent.md](references/privacy-consent.md) for the
-   GDPR/COPPA/Consent-Mode-v2 floor and the forbidden-keys starter.
-5. **Push back on disproportion.** If a GTM + server-side container + BigQuery
-   export apparatus is heavier than the app or audience warrants, say so
-   plainly and name the lighter alternative (gtag.js direct, or even
-   a simpler non-GA4 product analytics tool) before building. Record the
-   decision in the plan without adding non-GA4 implementation details.
-   Don't gold-plate; don't silently comply with over-engineering.
+1. **Tie every event to a decision.** Before listing anything, ask: "What keep /
+   improve / drop / prioritize decision will this data drive?" If an event
+   answers no decision, don't collect it. Data minimization and anti-bloat in
+   one rule.
+2. **Never assume an intake answer.** Property ids, Measurement IDs, audience,
+   consent posture, tier, framework, team size, ownership: these come from the
+   user or from the repo with a `file:line` citation. If you don't have one, ask
+   and wait. A confident guess in an analytics plan is a production defect that
+   GA4 will never let you un-collect.
+3. **Never trust analytics folklore — validate against GA4's live docs.** GA4
+   behavior changes and is widely misremembered. Verify, with citations, every
+   claim about reserved vs recommended event names, `gtag.js` vs Measurement
+   Protocol shape, currency/units rules, parameter limits, identity/session
+   semantics, Consent Mode v2 requirements, region/data-residency reality, and
+   Admin API user-deletion behavior. Mark each claim CONFIRMED / REFUTED /
+   PARTIAL / NOT-FOUND with a source URL. Do not repeat a claim you couldn't
+   verify.
+4. **Anchor to the real codebase.** Read the source. Cite `file:line` for every
+   place an event fires, every route, every migration, every config touch. A
+   plan written without the source tree open is a guess.
+5. **Privacy is the floor, not a feature.** No raw email/name/IP/free-text/
+   tokens, or explicit IP/user-agent/referrer params reach Google. Browser and
+   app SDKs still transmit passive headers and connection metadata; document
+   vendor behavior instead of overclaiming "nothing leaves". Maintain an
+   explicit forbidden-keys list (exact names + wildcards + value-shape regexes)
+   and scrub at the source AND at the processing layer.
+6. **Push back on disproportion.** If the requested tier is heavier than the app
+   or audience warrants, say so plainly, name the lighter tier and the cost
+   delta, and record the user's decision either way. Don't gold-plate; don't
+   silently comply with over-engineering.
 
-## 1. Process
+## 1. Intake gate — ask, don't infer (blocking)
 
-Run these in order. On Claude Code, dispatch subagents (via the `Explore`
-or `general-purpose` subagent types, or `superpowers:dispatching-parallel-agents`)
-for breadth so the main context stays clean. On Codex or other harnesses
-without subagents, run each step inline but keep notes terse — context is
-the constraint.
+Read the target repo's operating instructions and product context first:
+`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `docs/`, architecture docs,
+existing feature plans, postmortems, analytics docs, current vendor config. Treat
+them as requirements; if they conflict with the user's ask, state the conflict
+before planning.
 
-### 1.0. Read project instructions and existing docs first
+Then run [assets/intake-questionnaire.md](assets/intake-questionnaire.md): five
+blocks (goal & decisions, audience & legal, platform & stack, tier & ownership,
+existing GA4/GTM state), one block per message, in order. Verify from the repo
+what the repo can answer and show it back for confirmation rather than asking
+blind.
 
-Before proposing an event, read the target repo's operating instructions
-and product context: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`,
-`docs/`, architecture docs, existing feature plans, postmortems, analytics
-docs, and any current vendor config. Treat those files as requirements.
-If they conflict with the user's ask, state the conflict before planning.
+**This gate blocks output.** While a required answer is missing, produce no
+design plan, no runbook, no event catalog, and no MCP spec — name the open
+question and wait. Three answer states are allowed: answered, recommended +
+confirmed (you proposed, the user agreed, both recorded), or explicitly `OPEN`
+with a note on what it blocks. `ASSUMED:` is not a state. Every answer lands
+verbatim in the plan's §0.5 Intake record with its source.
 
-### 1.1. Clarify the goal (use `superpowers:brainstorming` if available)
+If `superpowers:brainstorming` is available, use it to run the blocks — it is
+the same conversation, better structured.
 
-Rewrite the vague ask ("add analytics") into the specific decisions the
-data must drive. Examples:
+## 2. Choose a tier deliberately
 
-- "which features are used vs dead, to decide what to drop"
-- "where does the signup funnel leak"
-- "which locales to keep translating"
-- "did the redesign change engagement"
+One tier per plan. Tier 2 contains tier 1's GA4 work; tier 3 always layers on
+top of a client tier and never replaces automatic collection. Platform (web /
+React SPA / mobile app / backend) is a separate question — any platform runs at
+any tier.
 
-Capture: audience (minors? EEA/UK/Switzerland? B2B?), target GA4
-property (or the need to create a new one), data streams (web, app, or
-both), whether GTM web will be used (why, owner, container), other
-infrastructure (gtag.js, Firebase SDK, sGTM, BigQuery), and hard
-constraints (server-side-only? no client JS? privacy-by-default?).
+| | Tier 1 — basic | Tier 2 — advanced | Tier 3 — hyper |
+| --- | --- | --- | --- |
+| Transport | Google tag (`gtag.js`) web, Firebase SDK app | GTM web container + `userevent` dataLayer | sGTM tagging server and/or Measurement Protocol |
+| Time to ship | hours | a day | a week+ |
+| Non-engineer can edit tags | no | yes | yes, with care |
+| Ad-blocker resistant | no | no | yes (first-party) |
+| Infra cost | $0 | $0 | $$ Cloud Run / App Engine |
+| Ops burden | low | medium | high |
+| Right for | engineering-owned instrumentation, one property, no pixels | marketing-owned pixels, tag changes without a deploy | ad-blocker loss that costs more than the infra, server-only truth, strict privacy posture |
 
-If the user has not supplied a target GA4 property, make the setup
-runbook create a new GA4 property and the required data stream. Do not
-use Universal Analytics "profile" terminology. For web/GTM setup, ask
-for the web data stream's Measurement ID / Google tag ID (`G-...`) before
-producing paste-ready Google tag or GTM tag instructions; if the property
-will be created during setup, leave an explicit `G-...` placeholder and a
-step to copy the generated Measurement ID. Classic GTM web configuration
-does not need a `web_stream_id`; use stream resource ids only when Admin
-API automation explicitly modifies stream-level settings.
+**Default to the leftmost tier that meets the stated need.** Moving right is a
+real cost in build and in ops. App streams are tier 1 by default: the Firebase
+SDK is how app streams get automatic collection and app-instance identity.
 
-### 1.2. Required source-inspection checklist
+- [references/tier-1-ga4-direct.md](references/tier-1-ga4-direct.md) — Google tag
+  install, `page_view` ownership and `send_page_view`, Firebase SDK, consent load
+  order, upgrade path.
+- [references/tier-2-gtm-web.md](references/tier-2-gtm-web.md) — when GTM is
+  justified, the `userevent` dataLayer contract, built-in allowlist, SPA
+  pageviews in GTM, container hygiene, upgrade path.
+- [references/tier-3-server-side.md](references/tier-3-server-side.md) — MP
+  endpoint/payload/identity, queue & worker pattern, quotas, sGTM vs MP client,
+  downgrade check.
 
-Explore the codebase and list EVERY trackable surface — don't rely on
-memory. See [references/surface-checklist.md](references/surface-checklist.md)
-for the full inventory. At minimum cover:
+Hybrids are allowed only in the documented direction: tier 3 augmenting tier 1
+or 2 for named server/offline events. Do not mix incompatible client paths (two
+Google tags, or gtag sends inside a GTM container).
 
-- page/screen views (logical names, not just URLs)
-- route tables, controller/actions, loaders/actions, API endpoints
-- templates/components/screens and forms
-- state-changing handlers and mutations
-- domain objects and lifecycle transitions
-- auth (signup, login, logout, failure, password reset, MFA)
-- admin and support flows
-- core CRUD for each domain object
-- imports, exports, uploads, downloads, integrations, and webhooks
-- search/filter/sort interactions
-- funnels (multi-step flows: checkout, onboarding, upgrade)
-- settings/preferences toggles
-- sharing/invites
-- navigation (primary menu items, nav drawer)
-- errors (server 5xx/4xx, client `onerror`, unhandled rejections)
-- performance (latency, Core Web Vitals, slow queries)
-- background/cron jobs (when the work the user requested completes)
-- lifecycle moments (first-run, activation, retention triggers)
+State the trade-off out loud: cost, latency, privacy, modeled-conversion loss,
+ops toil. Name the exact endpoint/path and payload shape for the chosen tier.
 
-Map each surface to a decision from 1.1. Surfaces with no decision: cut.
+## 3. Process
 
-### 1.3. Vendor-doc validation checklist
+Run in order. On Claude Code, dispatch subagents (`Explore` /
+`general-purpose`, or `superpowers:dispatching-parallel-agents`) for breadth so
+the main context stays clean. On Codex or other harnesses without subagents, run
+each step inline and keep notes terse — context is the constraint.
 
-Before locking architecture or schema, re-check current official vendor
-docs and cite sources for every claim about:
+### 3.1. Inventory every trackable surface
 
-- ingestion endpoint and URL path
-- client payload shape vs Measurement Protocol payload shape
-- GTM web/sGTM behavior, clients, tags, transformations, dataLayer contract
-- recommended, automatically collected, and reserved event names
-- identity, session, `client_id`, `user_id`, and consent rules
-- event/parameter limits, custom definitions, metrics, and retention
-- deletion APIs, region/data-residency statements, and BigQuery export
-- ecommerce rules, including `items[]`, `transaction_id`, `currency`, and
-  `value`
+List EVERY surface from the source, not from memory: page/screen views with
+logical names, routes, controllers, loaders, API endpoints, components, forms,
+state-changing handlers, domain lifecycle transitions, auth, admin/support
+flows, CRUD, imports/exports/uploads, integrations and webhooks,
+search/filter/sort, funnels, settings toggles, sharing/invites, navigation,
+errors, performance, background jobs, lifecycle moments. Full inventory:
+[references/surface-checklist.md](references/surface-checklist.md).
 
-Mark claims CONFIRMED / REFUTED / PARTIAL / NOT-FOUND. If a claim cannot
-be verified, do not use it as a requirement.
+Map each surface to a decision from block 1. Surfaces with no decision: cut.
 
-### 1.4. Design the event envelope
+### 3.2. Validate against vendor docs
 
-Define one canonical event envelope before any GA4/GTM mapping:
-`trigger: "userevent"`, `event_type: "pageview" | "event"`,
-GA4-native `event_name`, `feature_name` or `screen_name`, `ids`,
-`consent`, `userParams`, `eventParams`, and `server_timestamp`. Never
-maintain a product/internal event name and rewrite it to GA4 later.
+Before locking architecture or schema, re-check current official docs and cite
+sources for: the ingestion endpoint and path; client vs Measurement Protocol
+payload shape; GTM/sGTM clients, tags, and dataLayer contract; recommended,
+automatically collected, and reserved event names; identity, session, and
+consent rules; event/parameter limits, custom definitions, retention; deletion
+APIs, residency statements, BigQuery export; ecommerce rules. Mark CONFIRMED /
+REFUTED / PARTIAL / NOT-FOUND. An unverifiable claim is not a requirement.
 
-For `event_type: "event"`, `event_name` is the final GA4 event name:
-choose a GA4 recommended name where one exists, otherwise document one
-custom GA4-safe name. For `event_type: "pageview"`, GA4 receives
-`page_view`; page/screen context lives in `userParams`.
+### 3.3. Design the event envelope once
 
-Use `feature_name` or `screen_name` for product/surface grouping; do not
-use `event_group`. Keep page/user context in `userParams` by default
-(`page_name`, `page_location`, `screen_name`); when using GTM, map
-URL/path/referrer fields from GTM Built-In Variables and use `page_name`
-for the logical page identity. For MCP execution specs, keep GTM
-built-ins to the MCP-supported planner-facing list: `Page URL`,
-`Page Path`, `Page Hostname`, `Referrer`, and `Event`; never include
-`Page Title`. Keep action-specific payload in `eventParams`. Full shape
-and validation rules live in
+One canonical envelope, before any tier mapping: `trigger: "userevent"`,
+`event_type: "pageview" | "event"`, GA4-native `event_name`, `feature_name` or
+`screen_name`, `ids`, `consent`, `userParams`, `eventParams`,
+`server_timestamp`. Never maintain an internal event name and rewrite it to GA4
+later.
+
+For `event_type: "event"`, `event_name` is the final GA4 event name — a GA4
+recommended name where one exists, otherwise one documented custom GA4-safe
+name. For `event_type: "pageview"`, GA4 receives `page_view` and page/screen
+context lives in `userParams`.
+
+Use `feature_name` / `screen_name` for product grouping; never `event_group`.
+Keep page/user context in `userParams` (`page_name`, `page_location`,
+`screen_name`) and action payload in `eventParams`. Reuse GA4/GTM built-ins
+before adding a parameter, dataLayer variable, or custom definition. Do not
+model Universal Analytics fields (`event_category`, `event_action`,
+`event_label`). Field names stay identical across tiers; only the envelope
+around them changes. Full shape and validation rules:
 [references/ga4-event-schema.md](references/ga4-event-schema.md).
 
-Before adding a parameter, dataLayer variable, or custom definition,
-reuse GA4/GTM built-ins. Do **not** model Universal Analytics fields
-(`event_category`, `event_action`, `event_label`). Add only
-low-cardinality, context-specific parameters, then register only the ones
-needed for reports.
-
-### 1.5. Identity & sessions
+### 3.4. Identity and sessions
 
 Anonymous visitor id (server-minted, documented format) plus a stable
-authenticated `user_id` that is **hashed AND peppered** — plain SHA-256
-of an email is reversible with a user list, so treat as pseudonymous
-personal data. State exactly which events carry `user_id` and when it's
-cleared (logout, account deletion).
+authenticated `user_id` that is **hashed AND peppered** — plain SHA-256 of an
+email is reversible with a user list, so treat it as pseudonymous personal data.
+State exactly which events carry `user_id` and when it's cleared (logout,
+account deletion).
 
-Don't assume Measurement Protocol can rely on `user_id` alone. Web MP
-needs `client_id`; app MP needs SDK-derived `app_instance_id`; session and
-engagement params are required for accurate Realtime, engagement, and
-session attribution. See
+Measurement Protocol cannot rely on `user_id` alone: web MP needs `client_id`,
+app MP needs an SDK-derived `app_instance_id`, and session/engagement params are
+required for accurate Realtime, engagement, and session attribution. See
 [references/identity-sessions.md](references/identity-sessions.md).
 
-### 1.6. Choose one architecture deliberately
+### 3.5. Wire it into the actual framework
 
-The common patterns and when each is right:
+Decide and record three things per surface in scope: the mount point, who owns
+`page_view` (automatic Enhanced Measurement or manual — never both), and where
+the consent gate sits. Route all component sends through one
+`lib/analytics/track.ts`-style boundary so the tier is swappable in one file.
+React / Next.js App + Pages Router, Vite + react-router, React Native +
+Firebase, Vue/Svelte, and Turbo/htmx patterns with paste-ready snippets:
+[references/framework-integration.md](references/framework-integration.md).
 
-- **gtag.js client-side** — fastest to ship, full Consent Mode support out
-  of the box, and the normal path for GA4 automatic collection. Loses
-  data to ad blockers and to users who deny consent.
-- **Firebase Analytics SDK direct** — default for iOS/Android app streams.
-  Gives app automatic collection, app-instance identity, screen reporting,
-  and SDK consent controls. Measurement Protocol should augment this path,
-  not replace it.
-- **GTM web container** — use only when needed. Normal web analytics uses
-  one `userevent` dataLayer event name with two filtered reusable
-  trigger/tag paths; send one `dataLayer.push` per analytics occurrence,
-  not a batch of multiple GA4 events; ecommerce stays separate. The GTM
-  Google tag / GA4 Event tags send to the web data stream's Measurement
-  ID / Google tag ID (`G-...`), not a GA4 web stream resource id.
-- **Measurement Protocol augmentation** — sends server/offline events
-  into an existing web/app stream, can recover critical events ad
-  blockers drop, and can enrich with server-only truth. It requires the
-  right surface identifier (`client_id` for web, `app_instance_id` for
-  app), manual `session_id`/`engagement_time_msec`, and should augment
-  gtag.js/GTM/Firebase rather than replace automatic collection.
-- **Server-side GTM (sGTM)** — hybrid: client sends to your domain, your
-  sGTM container forwards to GA4. Best privacy posture, highest ops cost.
+### 3.6. Privacy, consent & legal floor
 
-Pick one concrete architecture. Do not mix incompatible paths, except for
-an explicit hybrid where Measurement Protocol augments a client/app stream
-for named server/offline events. Distinguish
-`gtag.js` / GA4 client traffic from Measurement Protocol traffic and from
-custom sGTM clients. Name the exact endpoint/path and payload shape:
-
-- `gtag('event', name, params)` for browser sends
-- `dataLayer.push({ event: 'userevent', trigger: 'userevent',
-  event_type: 'pageview' | 'event', event_name, userParams,
-  eventParams })` for normal GTM web sends. GTM fires on top-level
-  `event`; `trigger` stays in the canonical contract for audit/tests.
-  Each push represents one GA4 event occurrence; never batch multiple
-  GA4 events into one push.
-- Firebase Analytics SDK `logEvent` / `setUserID` / `setConsent` for
-  iOS/Android app sends
-- `https://www.google-analytics.com/mp/collect?...` with JSON payload for
-  Measurement Protocol sends, or
-  `https://region1.google-analytics.com/mp/collect?...` when EU regional
-  collection is required
-- first-party sGTM endpoint path plus the exact client/tag/template config
-  when using server-side GTM
-
-For sGTM, distinguish routing Google tags through a first-party tagging
-server from sending MP-format backend events to an sGTM Measurement
-Protocol client. The latter is not the GA4 MP endpoint and has different
-debugging/validation behavior.
-
-State the trade-off out loud (cost, latency, privacy, modeled-conversion
-loss, ops toil). See [references/gtm-and-tagging.md](references/gtm-and-tagging.md)
-and [references/ga4-server-side.md](references/ga4-server-side.md) for the
-full decision matrix.
-
-If sending server-side, **never block the request path**. Use a bounded
-queue + worker count + per-send timeout + explicit drop-on-overflow. Fail
-silent for users and log failures without PII.
-
-### 1.7. Privacy, consent & legal checklist
-
-Consent model + defaults (deny-by-default in the EEA, UK, and Switzerland
-under Google's EU User Consent Policy), equal-prominence reject button, the
-exact gate logic. For minors: a hard **server-side** disable, not just a
-client toggle. Existing users without age/consent classification default to
-analytics-disabled / unclassified until they answer the gate. Default to
-**basic consent mode** for strict privacy: consent rejection produces no
-third-party analytics send. If the plan chooses advanced consent mode,
-state that denied users still send cookieless pings and require explicit
-legal/product approval. For apps, document Firebase SDK collection defaults,
-`setConsent`, and `setAnalyticsCollectionEnabled` behavior.
+The plan states: the consent model and defaults (deny-by-default in the EEA, UK,
+and Switzerland under Google's EU User Consent Policy), the equal-prominence
+reject button, and the exact gate logic. Minors get a hard **server-side**
+disable, not a client toggle; users without age/consent classification default to
+analytics-disabled until they answer the gate. Default to **basic consent mode** —
+if the plan chooses advanced, say that denied users still send cookieless pings
+and require explicit legal/product approval. Apps document Firebase collection
+defaults, `setConsent`, and `setAnalyticsCollectionEnabled`.
 
 No raw email, name, phone, free text, token, full URL query, or explicit
-IP/user-agent/referrer params or payload fields leave the app. Define
-forbidden keys, wildcard rules, and value-shape regexes. Scrub at the
-source and again in the processing layer.
+IP/user-agent/referrer params leave the app. Define forbidden keys, wildcards,
+and value-shape regexes; scrub at the source and again in the processing layer.
+For IP/geo prefer local enrichment. Richer data pulls in a DPIA, processor
+agreement, RoPA entry, privacy-policy update, and a real erasure pipeline —
+and residency claims stay honest, because regional collection is not an
+"EU-only processing" promise. Floor and exact requirements:
+[references/privacy-consent.md](references/privacy-consent.md); starter list:
+[assets/forbidden-keys.md](assets/forbidden-keys.md).
 
-For IP/geo, prefer local enrichment. If IP-like data must leave the app,
-truncate precisely in the plan (IPv4 `/24`, IPv6 `/48`, or stricter) and
-cite the vendor behavior.
+### 3.7. Reporting config — dimensions vs metrics
 
-For richer data: DPIA, processor agreement, RoPA entry, privacy-policy
-update, data-subject erasure pipeline (Admin API
-`properties.submitUserDeletion` plus downstream stores like BigQuery
-export), regional-collection reality (regional collection is not an
-"EU-only" processing promise). Full floor in
-[references/privacy-consent.md](references/privacy-consent.md).
+Numeric values you aggregate are **metrics** (with units); categorical values you
+group or filter by are **dimensions**. A parameter is usually one or the other —
+pick deliberately. Start from GA4 predefined dimensions/metrics and
+recommended-event parameters; register a custom definition only for a
+decision-backed question GA4 cannot already answer, and name the predefined
+alternative you checked. List what NOT to register: GA4 built-ins, and
+high-cardinality ids that hit cardinality limits and collapse into `(other)`.
+Choose scope (event vs user) explicitly and stay under GA4's caps. No generic
+category/action/label replacement, no bulk creation from available params; more
+than 10 custom definitions in a first pass needs explicit justification. Caps
+and decision rules: [references/reporting-config.md](references/reporting-config.md).
 
-### 1.8. Reporting config — dimensions vs metrics
-
-Numeric values you aggregate (durations, counts, scores) are **metrics**
-(with units); categorical values you group/filter by are **dimensions**. A
-parameter is usually one or the other — pick deliberately. List what to
-register as custom definitions, what NOT to register (GA4 built-ins;
-high-cardinality ids that blow up GA4's cardinality limits and produce
-"(other)" rows), the scope (event vs user), and stay under GA4's caps.
-Start with GA4 predefined dimensions/metrics and recommended-event
-parameters; create custom definitions only for decision-backed questions
-that GA4 cannot already answer. For each feature/screen context, list the
-context-specific parameters that may need registration. Do not create a
-generic category/action/label replacement; create specific dimensions that
-answer the decision for that context. Do not bulk-create dimensions from all
-available params; >10 custom definitions in a first-pass plan needs an
-explicit justification.
-The current caps and decision rules live in
-[references/reporting-config.md](references/reporting-config.md).
-
-### 1.9. Reserve, don't build, the future
+### 3.8. Reserve, don't build, the future
 
 If real ecommerce/payments may come later, reserve the GA4-standard schema
 (`purchase` / `refund`, ISO-4217 `currency`, idempotent `transaction_id`,
-`value` = Σ discounted `items[].price * items[].quantity` excluding tax
-and shipping) as a **documented-but-inactive** category — kept out of the
-live allowlist until it ships. Flag the reservation as deliberate
-future-proofing, docs-only. Cheap. Stops someone bolting `currency:
-"POINTS"` onto a non-revenue event later and polluting Monetization
-reports.
+`value` = Σ discounted `items[].price * items[].quantity` excluding tax and
+shipping) as a **documented-but-inactive** category, kept out of the live
+allowlist until it ships. Cheap, docs-only, and it stops someone bolting
+`currency: "POINTS"` onto a non-revenue event later.
 
-### 1.10. Multi-pass review before finalizing
+### 3.9. Multi-pass review before finalizing
 
-Run independent review passes. On Claude Code use parallel subagents; on
-Codex run sequentially. Merge findings into the final plan and note every
-correction in a revision header. Cover:
+Run independent passes — parallel subagents on Claude Code, sequential
+elsewhere — and merge findings into a revision header:
 
-- **(a) GA4 correctness** — every reserved/recommended name, every param
-  cap, every Consent Mode v2 claim cited against the live docs.
+- **(a) GA4 correctness** — every reserved/recommended name, param cap, and
+  Consent Mode v2 claim cited against live docs.
 - **(b) Privacy/legal** — forbidden-keys list complete, hashing peppered,
   deletion pipeline real, residency claim accurate.
-- **(c) Data coverage gaps** — what's collectable server-side that's
-  being missed? (device from UA, geo from IP, referrer/UTM, real page
-  URL, language, latency, error class, request id.)
-- **(d) Codebase fit** — do the `file:line` anchors actually exist? Do
-  proposed patterns match existing project conventions, deps, lint rules?
-  If GTM web is used, confirm no normal event requires a per-event GTM
-  tag or trigger beyond the approved `userevent` filtered trigger/tag
-  paths, and that each `dataLayer.push` represents exactly one analytics
-  occurrence.
+- **(c) Coverage gaps** — what's collectable that's being missed (device from UA,
+  geo from IP, referrer/UTM, real page URL, language, latency, error class,
+  request id)?
+- **(d) Codebase and tier fit** — do the `file:line` anchors exist? Do patterns
+  match project conventions, deps, and lint rules? Does exactly one source of
+  `page_view` exist? At tier 2, does any normal event require a per-event
+  trigger or tag, or any push carry more than one occurrence?
+- **(e) Intake fidelity** — does every value in the plan trace to §0.5, the repo,
+  or a cited doc? Anything that traces to nothing gets deleted or asked.
 
-Fix every finding before finalizing. Note the corrections in a revision
-header.
+Fix every finding before finalizing.
 
-### 1.11. Split decisions, implementation, and configuration
+### 3.10. Split the artifacts
 
-Keep the artifacts separate:
+- **Design plan** — decisions, tier choice and rejected tiers, envelope, event
+  catalog, framework wiring, codebase anchors, implementation order. Keep
+  rationale here; agents need to see why a code change exists.
+- **Setup runbook** — GA4 Admin, GTM, Firebase, MP, and sGTM configuration with
+  exact values to paste, organized so an operator reads only their tier. No
+  rationale.
+- **Durable analytics contract** — the post-launch source of truth for future
+  feature work.
+- **MCP execution spec** — optional machine-readable desired state.
 
-- **Design plan:** decisions, architecture rationale, event envelope,
-  event catalog, codebase anchors, and implementation order. Keep
-  implementation rationale here because agents need to see why a code
-  change exists.
-- **Setup runbook:** GA4 Admin, GTM, Measurement Protocol, Firebase, and
-  sGTM configuration instructions with exact values to paste. Do not
-  duplicate the rationale.
-- **Durable analytics contract:** the post-launch source of truth for
-  future feature work.
-- **MCP execution spec:** optional machine-readable desired state for a
-  separate custom GA/GTM MCP server.
+Templates: [assets/plan-template.md](assets/plan-template.md),
+[assets/runbook-template.md](assets/runbook-template.md),
+[assets/analytics-contract-template.md](assets/analytics-contract-template.md),
+and [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml).
 
-Templates live in [assets/plan-template.md](assets/plan-template.md),
-[assets/runbook-template.md](assets/runbook-template.md), and
+When the user wants configuration applied by an MCP server, generate
+`docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml` from the
+YAML template. Non-negotiables: default `execution.mode: dry_run`; publish and
+GTM container-version creation both disabled unless explicitly requested after
+diff and preview review; no secrets; only concrete values from the approved
+catalog — no wildcards, no invented events; no consent changes unless the design
+plan approves them. Boundary, allowed vs gated actions, and the default flow:
+[references/mcp-automation.md](references/mcp-automation.md).
+
+### 3.11. Make it durable
+
+Create or update `docs/README_ANALYTICS.md` from
 [assets/analytics-contract-template.md](assets/analytics-contract-template.md).
-When automation is requested, also use
-[assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml).
-
-### 1.11a. Generate MCP execution spec when automation is requested
-
-If the user wants GA4/GTM configuration to be applied by an MCP server,
-generate `docs/agents/features/PLANNED-ga4-instrumentation.mcp-execution.yaml`
-from [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml).
-
-The MCP spec is machine-readable desired state. It must not contain
-rationale. It may only contain approved values from the design plan and
-setup runbook: GA4 property placeholders, Measurement ID / Google tag ID,
-stream resource placeholders only for explicit stream-level Admin API
-operations, GTM account/container placeholders, custom dimensions, custom
-metrics, key events, built-in variables, data-layer variables, triggers,
-tags, optional server-side GTM settings, validation rules, and publish
-gate configuration.
-
-Use concrete schema values wherever the MCP schema requires enums. For
-example, `target.environment` must be `dev`, `staging`, or `prod`, not a
-combined placeholder string. Target resource ids may remain obvious
-placeholder resource names until the operator supplies real values.
-
-Default execution mode is `dry_run`. Publishing must be disabled unless
-the user explicitly requests publish after reviewing the diff and preview
-validation.
-
-Creating a GTM container version is also a gated step, because it
-materializes workspace changes into a container version and removes the
-workspace. Do not enable version creation by default.
-
-Do not parse Markdown tables loosely into executable config if the values
-are ambiguous. Mark ambiguous values as placeholders and require the final
-MCP operator to fill them before apply. Do not put wildcard-style
-`eventParams.*`, `userParams.*`, or `<approved_param>` entries into the
-executable YAML; create only concrete Data Layer Variables and tag params
-approved by the event catalog.
-
-Do not create or modify consent settings unless the design plan explicitly
-approves that behavior.
-
-### 1.12. Make it durable (instrumentation contract)
-
-Create or update `docs/README_ANALYTICS.md` using
-[assets/analytics-contract-template.md](assets/analytics-contract-template.md).
-It is the durable product contract after launch. It must explain how every
-future user-visible feature gets measured.
+It must explain how every future user-visible feature gets measured, and it must
+name the tier so nobody adds a GTM tag to a tier-1 app.
 
 Add a target-repo `AGENTS.md` rule: every user-visible feature change must
-include analytics impact: `trigger`, `event_type`, `event_name` where
-applicable, `feature_name` or `screen_name`, typed params, tests,
-taxonomy doc update, predefined-dimension check for any new custom
-definition, and vendor/runbook updates when relevant. The rule must ban
-bulk custom-dimension creation and boolean presence dimensions such as
-`*_exists` / `has_*`, and it must ban `event_group` as the taxonomy
-field.
+include analytics impact — `trigger`, `event_type`, `event_name` where
+applicable, `feature_name` or `screen_name`, typed params, tests, taxonomy doc
+update, predefined-dimension check for any new custom definition, and
+vendor/runbook updates when relevant. The rule bans bulk custom-dimension
+creation, boolean presence dimensions (`*_exists`, `has_*`), and `event_group`.
 
 Enforce by CI drift checks:
 
 - every state-changing route emits an event or appears in an allowlist
 - code event envelopes match the taxonomy exactly
 - required event params have tests
-- forbidden-keys regex sweep on captured payloads in CI
+- forbidden-keys regex sweep on captured payloads
+- no direct `gtag(` / `dataLayer.push(` outside the analytics module
 
-State the source-of-truth lifecycle: the plan in `docs/agents/features/`
-during design and launch → migrates to a permanent product doc afterward.
+State the source-of-truth lifecycle: the plan in `docs/agents/features/` during
+design and launch → a permanent product doc afterward.
 
-### 1.13. Verification (checkbox, not vibes)
+### 3.12. Verification (checkbox, not vibes)
 
-See [superpowers:verification-before-completion]. Each criterion is a
-checkbox the implementer ticks:
+See [superpowers:verification-before-completion]. Tier-specific checklists live
+in each tier reference; these apply to every plan:
 
 - [ ] PII sweep of captured payloads — no forbidden keys leak
 - [ ] Consent denied → zero third-party analytics sends
 - [ ] Minor / age-unclassified user → zero analytics sends
+- [ ] Exactly one source of `page_view` is active; five navigations produce five
+      `page_view` events
 - [ ] Exact event assertions for each critical event and required param
-- [ ] Internal contract and GTM dataLayer payloads use
-      `event: "userevent"` where GTM is used, plus
-      `trigger: "userevent"` and `event_type: "pageview" | "event"`
-- [ ] GTM web sends one `dataLayer.push` per analytics occurrence; no
-      push batches multiple GA4 events.
-- [ ] `event_name` is already the GA4 event name; no internal-to-GA4
-      rewrite table exists
-- [ ] No `event_group` or `ga4_event_name` field appears in new payloads
-- [ ] Page/screen context is grouped in `userParams` with
-      GA4/GTM-compatible keys
-- [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK, MP,
-      or sGTM) and do not leak internal-only fields.
+- [ ] Internal contract and GTM dataLayer payloads use `event: "userevent"`
+      where GTM is used, plus `trigger: "userevent"` and
+      `event_type: "pageview" | "event"`
+- [ ] One `dataLayer.push` per analytics occurrence; no batching
+- [ ] `event_name` is already the GA4 event name; no internal-to-GA4 rewrite
+      table exists
+- [ ] No `event_group` or `ga4_event_name` in new payloads
+- [ ] Page/screen context grouped in `userParams` with GA4/GTM-compatible keys
+- [ ] Vendor sends use native mapped shapes (`gtag`, Firebase SDK, MP, sGTM) and
+      leak no internal-only fields
 - [ ] Exactly-one-event assertions on critical funnels (no double-fire)
 - [ ] Network failure → UX still works (fail silent)
 - [ ] `user_id` stitches across anonymous → authenticated session
-- [ ] Every registered custom dimension/metric populates in GA4 DebugView
-  or equivalent within 60s of a test event
+- [ ] Every registered custom dimension/metric populates in DebugView within 60s
 - [ ] Realtime report shows the test event with all expected params
 
-## 2. Output
+## 4. Output
 
-Produce the design plan and setup runbook separately in the project's
-existing docs tree (`docs/agents/features/PLANNED-ga4-instrumentation.md`
-plus a sibling `runbook` artifact, following `docs/AGENTS.md` if it
-exists), then create/update `docs/README_ANALYTICS.md` and the target
-repo `AGENTS.md` analytics-impact rule. If the user asks for
-automation/MCP/configuration execution, also produce the optional MCP
-execution spec as a sibling `*.mcp-execution.yaml` artifact.
+Produce the design plan and setup runbook separately in the project's existing
+docs tree (`docs/agents/features/PLANNED-ga4-instrumentation.md` plus a sibling
+runbook artifact, following `docs/AGENTS.md` if it exists), then create/update
+`docs/README_ANALYTICS.md` and the target repo's `AGENTS.md` analytics-impact
+rule. Add the `*.mcp-execution.yaml` spec only when automation is requested.
 
-- **Design plan:** use `assets/plan-template.md` for the why,
-  architecture, event catalog, code anchors, implementation order,
-  verification, risks, and deliverables.
-- **Setup runbook:** use `assets/runbook-template.md` for GA4 Admin,
-  GTM/Firebase/MP/sGTM configuration, custom definitions, consent setup,
-  debug, validation, operations, and rollback.
-- **Durable contract:** use `assets/analytics-contract-template.md`.
-- **MCP execution spec, when automation is requested:** use
-  `assets/mcp-execution-spec-template.yaml` for the machine-readable
-  desired state.
-
-Keep a **revision header** at the top of each: what changed between
+Keep a **revision header** at the top of each artifact: what changed between
 passes. Plans that don't track their own revisions get re-litigated.
 
-If `superpowers:writing-plans` is available, use it to produce the
-implementation plan section; the GA4 design content above is the input
-to that plan, not a replacement for it.
+If `superpowers:writing-plans` is available, use it for the implementation-plan
+section; the GA4 design content is the input to that plan, not a replacement.
 
-## 3. Anti-patterns (reject these)
+## 5. Anti-patterns (reject these)
 
-- Events without decisions; plans without source anchors; claims without
-  vendor citations.
-- Product/internal event names rewritten to GA4 later. Pick GA4
-  `event_name` once.
-- `event_group`, `ga4_event_name`, or Universal Analytics-style
-  `event_category`, `event_action`, `event_label`.
-- Generic custom-dimension tables, boolean presence flags (`*_exists`,
-  `has_*`), high-cardinality ids, or predefined GA4/GTM duplicates.
-- Free-text, URLs, or tokens in event parameters.
+- Any value in the plan that came from inference: an invented Measurement ID,
+  assumed consent posture, assumed tier, assumed framework, assumed audience.
+- Producing a plan while a required intake answer is still open.
+- Events without decisions; plans without source anchors; claims without vendor
+  citations.
+- Two active sources of `page_view` — Enhanced Measurement history events plus a
+  manual router send, or a tier-1 snippet left in place after tier 2 ships.
+- Product/internal event names rewritten to GA4 later. Pick `event_name` once.
+- `event_group`, `ga4_event_name`, or UA-style `event_category` / `event_action` /
+  `event_label`.
+- Generic custom-dimension tables, boolean presence flags (`*_exists`, `has_*`),
+  high-cardinality ids (`user_id`, `order_id`, `session_id` as dimensions), or
+  predefined GA4/GTM duplicates.
+- Free text, URLs, or tokens in event parameters.
 - Synthetic `currency: "USD"` + `value: 0` on non-revenue events. Pollutes
-  Monetization reports forever; GA4 won't let you "untag" historical data.
-- Heavy infra (sGTM + BigQuery + Looker) proposed without naming the
-  lighter alternative and the cost delta.
-- Vague sGTM "transformations" that are not executable client/tag config,
-  custom template code, or an explicit first-party endpoint contract.
+  Monetization reports forever; GA4 won't let you un-tag historical data.
+- A heavier tier proposed without naming the lighter tier and the cost delta.
+- Vague sGTM "transformations" that are not executable client/tag config, custom
+  template code, or an explicit first-party endpoint contract.
+- A per-event GTM trigger/tag at tier 2.
 - Mixing the why-doc and the how-runbook into one drifting file.
 - Saying future features need analytics without updating `AGENTS.md`,
   `docs/README_ANALYTICS.md`, and CI drift checks.
-- High-cardinality dimensions (`user_id`, `order_id`, `session_id` as a
-  custom dimension) that hit GA4's cardinality limit and collapse into
-  `(other)`.
-- MCP specs with secrets or real API secret values.
-- MCP specs that enable publish or GTM container-version creation by
-  default.
-- MCP specs that invent events not present in the approved event catalog.
-- MCP specs that require one GTM trigger/tag per normal product event.
-- MCP specs that require `web_stream_id` for classic GTM web setup.
-- MCP specs that modify consent settings without explicit approval.
-- MCP specs that store full URLs with query strings as event parameters.
+- Analytics calls scattered through components instead of one swappable module.
 
-## 4. When to escalate, not plan
+MCP-specific anti-patterns live with the rest of the MCP rules in
+[references/mcp-automation.md](references/mcp-automation.md).
 
-Stop and ask the user before producing a plan if any are true:
+## 6. When to escalate, not plan
 
-- The product targets children under 13 (US COPPA) or under 16 (some EU
-  states) — a templated plan is unsafe; this needs counsel.
-- The repo shows no GA4 / GTM / `gtag` artifacts and the user hasn't said
-  GA4 is the choice. Confirm vendor first; don't assume.
-- The user wants to track health data (HIPAA), education records (FERPA),
-  or financial transactions in regulated jurisdictions. Escalate. Google
-  Analytics does not offer a HIPAA BAA; HIPAA-regulated entities must not
-  expose PHI to GA.
-- Existing analytics already ship and the user is asking for a migration,
-  not a greenfield plan, and the migration goal/source of truth is unclear.
-  If the user has named a specific gap (for example, Stripe purchases
-  missing from an existing gtag.js property), first state migration risks,
-  then produce a migration plan with continuity, validation, and rollback
-  steps.
+Stop and ask before producing a plan if any are true:
 
-## 5. Reference files
+- The product targets children under 13 (US COPPA) or under 16 (some EU states)
+  — a templated plan is unsafe; this needs counsel.
+- The repo shows no GA4 / GTM / `gtag` artifacts and the user hasn't said GA4 is
+  the choice. Confirm vendor first; don't assume.
+- The user wants to track health data (HIPAA), education records (FERPA), or
+  financial transactions in regulated jurisdictions. Google Analytics offers no
+  HIPAA BAA; HIPAA-regulated entities must not expose PHI to GA.
+- Existing analytics already ship and the user is asking for a migration, not a
+  greenfield plan, and the migration goal or source of truth is unclear. If they
+  named a specific gap (Stripe purchases missing from an existing property),
+  state migration risks first, then plan with continuity, validation, and
+  rollback.
 
-Read only the relevant detail:
+## 7. Reference and asset index
 
-- [references/ga4-event-schema.md](references/ga4-event-schema.md) —
-  event envelope, reserved/recommended names, caps, naming, validation.
-- [references/ga4-server-side.md](references/ga4-server-side.md) —
-  Measurement Protocol shape, ids/sessions, retries, debug endpoint.
-- [references/gtm-and-tagging.md](references/gtm-and-tagging.md) —
-  GTM/sGTM choice, dataLayer contract, hygiene, tag sequencing.
-- [references/privacy-consent.md](references/privacy-consent.md) —
-  Consent Mode v2, GDPR/COPPA floor, forbidden keys, deletion.
-- [references/identity-sessions.md](references/identity-sessions.md) —
-  hashing + peppering, stitching, session semantics.
-- [references/reporting-config.md](references/reporting-config.md) —
-  dimensions vs metrics, caps, cardinality, scopes.
-- [references/surface-checklist.md](references/surface-checklist.md) —
-  full trackable-surface inventory.
-- [references/mcp-automation.md](references/mcp-automation.md) —
-  optional MCP execution-spec boundary, allowed/gated actions, and
-  default dry-run flow.
+Tiers:
 
-## 6. Output templates
+- [references/tier-1-ga4-direct.md](references/tier-1-ga4-direct.md)
+- [references/tier-2-gtm-web.md](references/tier-2-gtm-web.md)
+- [references/tier-3-server-side.md](references/tier-3-server-side.md)
 
-- [assets/plan-template.md](assets/plan-template.md) — design plan
-  skeleton.
-- [assets/runbook-template.md](assets/runbook-template.md) — the GA4 +
-  GTM setup runbook skeleton with click-path placeholders and validation
-  steps.
-- [assets/analytics-contract-template.md](assets/analytics-contract-template.md) —
-  durable `docs/README_ANALYTICS.md` skeleton for future feature work.
-- [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml) —
-  optional machine-readable desired-state skeleton for custom MCP
-  automation handoff.
-- [assets/forbidden-keys.md](assets/forbidden-keys.md) — starter list of
-  parameter names and value-shape regexes that must never leave the
-  process boundary.
+Cross-tier:
+
+- [references/framework-integration.md](references/framework-integration.md) —
+  React/Next/React Native/Vue/server-rendered wiring, `page_view` ownership.
+- [references/ga4-event-schema.md](references/ga4-event-schema.md) — envelope,
+  reserved/recommended names, caps, naming, validation.
+- [references/identity-sessions.md](references/identity-sessions.md) — hashing +
+  peppering, stitching, session semantics.
+- [references/privacy-consent.md](references/privacy-consent.md) — Consent Mode
+  v2, GDPR/COPPA floor, forbidden keys, deletion.
+- [references/reporting-config.md](references/reporting-config.md) — dimensions
+  vs metrics, caps, cardinality, scopes.
+- [references/surface-checklist.md](references/surface-checklist.md) — full
+  trackable-surface inventory.
+- [references/mcp-automation.md](references/mcp-automation.md) — MCP boundary,
+  allowed/gated actions, default dry-run flow, MCP anti-patterns.
+
+Templates:
+
+- [assets/intake-questionnaire.md](assets/intake-questionnaire.md) — the blocking
+  five-block intake and the §0.5 record format.
+- [assets/plan-template.md](assets/plan-template.md) — design plan skeleton.
+- [assets/runbook-template.md](assets/runbook-template.md) — tier-organized setup
+  runbook with click-paths and validation.
+- [assets/analytics-contract-template.md](assets/analytics-contract-template.md)
+  — durable `docs/README_ANALYTICS.md` skeleton.
+- [assets/mcp-execution-spec-template.yaml](assets/mcp-execution-spec-template.yaml)
+  — machine-readable desired-state skeleton.
+- [assets/forbidden-keys.md](assets/forbidden-keys.md) — parameter names and
+  value-shape regexes that must never leave the process boundary.
